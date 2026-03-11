@@ -20,6 +20,11 @@ MAX_FIELD_VALUE_LEN = 100
 FIELD_NAME_WIDTH = 40
 SCHEMA_FIELDS_SHOWN = 15
 
+# Table to pull extra "actual data" from (name as in schema, or partial match)
+FOCUS_TABLE_NAME = "Projects"
+FOCUS_TABLE_RECORDS = 8
+FOCUS_TABLE_FIELDS = 14
+
 
 def format_value(v):
     """Turn a field value into a short, readable string for display."""
@@ -168,7 +173,57 @@ def main():
         print()
 
     # -------------------------------------------------------------------------
-    # Summary for the audience
+    # 3. ACTUAL DATA — More records from one table (e.g. Projects)
+    # -------------------------------------------------------------------------
+    focus_table = None
+    for t in tables:
+        name = t.get("name", "")
+        if FOCUS_TABLE_NAME.lower() in name.lower() or FOCUS_TABLE_NAME.lower() in re.sub(r"[^\w\s]", "", name).lower():
+            focus_table = t
+            break
+    if focus_table:
+        name = focus_table.get("name", "?")
+        tid = focus_table.get("id", "?")
+        url = f"{BASE_URL}/{base_id}/{urllib.parse.quote(tid)}"
+        print("  " + "-" * 66)
+        print(f"  3. ACTUAL DATA  ({name} — {FOCUS_TABLE_RECORDS} records)")
+        print("  " + "-" * 66)
+        print()
+        try:
+            r = requests.get(
+                url,
+                headers=headers,
+                params={"pageSize": FOCUS_TABLE_RECORDS},
+                timeout=30,
+            )
+            r.raise_for_status()
+            data = r.json()
+            records = data.get("records", [])
+            for i, rec in enumerate(records):
+                rec_id = rec.get("id", "?")
+                fields = rec.get("fields", {})
+                print(f"  Record {i + 1}  id: {rec_id}")
+                shown = 0
+                for k, v in fields.items():
+                    if shown >= FOCUS_TABLE_FIELDS:
+                        print(f"  {'...':<{FIELD_NAME_WIDTH}}  (+{len(fields) - FOCUS_TABLE_FIELDS} more)")
+                        break
+                    display = format_value(v)
+                    if display == "":
+                        continue
+                    label = (k[: FIELD_NAME_WIDTH - 2] + "..") if len(k) > FIELD_NAME_WIDTH else k
+                    val_lines = [display[j : j + 64] for j in range(0, len(display), 64)]
+                    print(f"  {label:<{FIELD_NAME_WIDTH}}  {val_lines[0]}")
+                    for extra in val_lines[1:]:
+                        print(f"  {'':<{FIELD_NAME_WIDTH}}  {extra}")
+                    shown += 1
+                print()
+        except requests.exceptions.RequestException as e:
+            print(f"  Error: {e}\n")
+        print()
+
+    # -------------------------------------------------------------------------
+    # Summary 
     # -------------------------------------------------------------------------
     print("  " + "=" * 66)
     print("  SUMMARY — What this demonstrates")
