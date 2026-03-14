@@ -1,5 +1,13 @@
+# Environment
 .env
-.venv
-venv
-.vscode
+.venv/
+venv/
+
+# Vector Store
+chroma_pbs/
+
+# IDE / Editor
+.vscode/
+
+# OS
 .DS_Store
