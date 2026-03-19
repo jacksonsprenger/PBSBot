@@ -24,6 +24,8 @@ A Slack chatbot for PBS Wisconsin that connects to their Airtable project base. 
 3. **Add your `.env` file** in the project root with:
    - `SLACK_BOT_TOKEN` and `SLACK_APP_TOKEN` (for the Slack app — see SETUP.md).
    - `AIRTABLE_API_KEY` and `AIRTABLE_BASE_ID` (for Airtable — create a token at [airtable.com/create/tokens](https://airtable.com/create/tokens) and use your base ID from the URL).
+   - `OPENAI_API_KEY` (for question clarification before retrieval).
+   - Optional: `OPENAI_MODEL` (defaults to `gpt-4o-mini`).
 
 4. **Run the Slack bot**
    ```bash
