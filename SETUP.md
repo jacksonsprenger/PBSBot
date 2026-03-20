@@ -62,9 +62,31 @@ Under **OAuth & Permissions** → **Scopes** → **Bot Token Scopes**, ensure yo
 
 If any are missing, add them, then go to **OAuth & Permissions** and **Reinstall to Workspace** so the new scopes apply.
 
+For **yes / no** follow-ups in a **channel** (not only DMs), also add:
+
+- **`channels:history`** – receive `message` events in public channels the bot is in  
+- **`groups:history`** – same for private channels (if you use them)
+
 ---
 
-## 6. Your `.env` when done
+## 6. Subscribe to bot events (Socket Mode)
+
+Under **Event Subscriptions** → **Subscribe to bot events**, include at least:
+
+| Event | Why |
+|--------|-----|
+| `app_mentions` | User tags `@PBS-Bot` with a question |
+| `message.im` | DMs (full flow) |
+| `message.channels` | Plain messages like `yes` in **public** channels after the bot asked for confirmation |
+| `message.groups` | Same in **private** channels |
+
+Without `message.channels` / `message.groups`, the bot only sees `@mentions`, so **`yes` in a channel is never delivered** and the bot will look “stuck” after the confirmation prompt.
+
+Click **Save Changes** and **reinstall the app** to the workspace if Slack asks.
+
+---
+
+## 7. Your `.env` when done
 
 `.env` should look like this (with your real tokens, no quotes):
 
@@ -86,3 +108,13 @@ or
 ```
 
 You should see **🤖 PBS Bot is running!** and the bot will reply in Slack when you DM it or mention it.
+
+### Debug logging
+
+Run with verbose logs:
+
+```bash
+LOG_LEVEL=DEBUG venv/bin/python3 main.py
+```
+
+Watch the terminal for `pbs_bot` lines (handlers, Chroma timing, OpenAI calls).

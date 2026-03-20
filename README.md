@@ -49,6 +49,8 @@ AIRTABLE_API_KEY=pat...
 AIRTABLE_BASE_ID=app...
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-4o-mini
+# Optional: how many Chroma chunks to pass into the answer LLM (default 5)
+CHROMA_N_RESULTS=5
 ```
 
 - Slack tokens: see **SETUP.md** for step-by-step instructions.
@@ -62,6 +64,20 @@ python main.py
 ### 4. Explore Airtable schema (optional)
 ```bash
 python explore_schema.py
+```
+
+### RAG flow (Slack bot)
+
+1. User message → **LLM** rewrites the question (`clarified_for_user`, `query_for_search`).
+2. Bot asks **yes / no** to confirm understanding.
+3. On **yes** → ChromaDB **embeds** `query_for_search` and returns the top `CHROMA_N_RESULTS` document chunks.
+4. **LLM** synthesizes a grounded answer from those chunks only (no API key → raw chunks are returned instead).
+
+Index Airtable into Chroma first (see `index_airtable.py`), then run `python main.py`.
+
+### 5. Test retrieval without Slack (optional)
+```bash
+python test_query.py
 ```
 
 ---
