@@ -213,7 +213,6 @@ def truncate_for_slack(text: str, max_chars: int = MAX_SLACK_CHARS) -> str:
         return text
     return text[: max_chars - 30].rstrip() + "\n\n_(Message truncated.)_"
 
-
 def normalize_mention_text(text: str) -> str:
     """
     Removes Slack user mention tokens from app mention events.
