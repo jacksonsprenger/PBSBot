@@ -5,6 +5,12 @@ venv/
 
 # Vector Store
 chroma_pbs/
+chroma_db/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
 
 # IDE / Editor
 .vscode/

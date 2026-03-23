@@ -8,6 +8,8 @@ certifi>=2022.9.24
 
 # RAG / Vector Store
 chromadb>=0.4.0
+pyairtable>=2.0.0
+openai>=1.0.0
 
 # HTTP
 requests>=2.28.0
