@@ -3,7 +3,10 @@ import certifi
 import os
 import json
 import logging
+import re
 import time
+import urllib.error
+import urllib.request
 from typing import Optional
 
 # Logging (set LOG_LEVEL=DEBUG for verbose traces)
@@ -22,7 +25,6 @@ ssl._create_default_https_context = ssl.create_default_context
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from dotenv import load_dotenv
-from openai import OpenAI
 
 import chromadb
 from chromadb.utils import embedding_functions
@@ -33,10 +35,19 @@ from chromadb.utils import embedding_functions
 load_dotenv()
 
 app = App(token=os.getenv("SLACK_BOT_TOKEN"))
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KEY") else None
-openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+# Campus Ollama (same as scripts/llm_connect.py — VPN + SSH tunnel → http://127.0.0.1:11434)
+ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").strip().rstrip("/")
+ollama_model = os.getenv("OLLAMA_MODEL", "deepseek-coder:6.7b")
+ollama_timeout = int(os.getenv("OLLAMA_TIMEOUT", "120"))
 # Number of Chroma chunks to retrieve before LLM synthesis (default 5)
 chroma_n_results = int(os.getenv("CHROMA_N_RESULTS", "5"))
+# Restrict "projects" RAG to 📈Projects chunks only (avoids noise from promos, tasks, etc.)
+chroma_projects_table_id = os.getenv("AIRTABLE_TABLE_ID", "tblU9LfZeVNicdB5e").strip()
+chroma_filter_projects_only = os.getenv("CHROMA_FILTER_TO_PROJECTS_TABLE", "true").lower() in (
+    "1",
+    "true",
+    "yes",
+)
 # Slack posts above ~4000 chars are often truncated; keep a safe margin
 MAX_SLACK_CHARS = 3500
 
@@ -71,6 +82,48 @@ except Exception as e:
 pending_confirmations = {}
 
 
+def ollama_generate(prompt: str) -> Optional[str]:
+    """POST to Ollama /api/generate (non-streaming). Returns response text or None on failure."""
+    if not ollama_base_url:
+        return None
+    url = f"{ollama_base_url}/api/generate"
+    payload = json.dumps(
+        {"model": ollama_model, "prompt": prompt, "stream": False}
+    ).encode()
+    req = urllib.request.Request(
+        url, data=payload, headers={"Content-Type": "application/json"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=ollama_timeout) as resp:
+            result = json.loads(resp.read().decode())
+        out = (result.get("response") or "").strip()
+        return out or None
+    except urllib.error.URLError as e:
+        log.warning("Ollama request failed (%s): %s", url, e)
+        return None
+    except Exception as e:
+        log.warning("Ollama request error: %s", e)
+        return None
+
+
+def _extract_json_object(text: str) -> Optional[dict]:
+    """Parse a JSON object from model output; tolerate extra prose or markdown fences."""
+    raw = (text or "").strip()
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        pass
+    m = re.search(r"\{[\s\S]*\}", raw)
+    if m:
+        try:
+            return json.loads(m.group(0))
+        except json.JSONDecodeError:
+            return None
+    return None
+
+
 # -----------------------------
 # Content Routing
 # -----------------------------
@@ -92,17 +145,30 @@ def route_query(query: str) -> str:
 # -----------------------------
 # Retrieval from ChromaDB
 # -----------------------------
-def retrieve_chunks(query: str, n_results: Optional[int] = None) -> list[str]:
+def retrieve_chunks(
+    query: str,
+    n_results: Optional[int] = None,
+    where: Optional[dict] = None,
+) -> list[str]:
     """
     Run semantic search: Chroma embeds the query and returns the top-N similar documents.
+    Optional ``where`` filters metadata (e.g. only 📈Projects rows).
     """
     k = n_results if n_results is not None else chroma_n_results
     t0 = time.perf_counter()
-    log.debug("retrieve_chunks: start query=%r n_results=%s", query[:200], k)
-    results = projects_collection.query(
-        query_texts=[query],
-        n_results=max(1, k),
+    log.debug(
+        "retrieve_chunks: start query=%r n_results=%s where=%s",
+        query[:200],
+        k,
+        where,
     )
+    qkwargs = {
+        "query_texts": [query],
+        "n_results": max(1, k),
+    }
+    if where:
+        qkwargs["where"] = where
+    results = projects_collection.query(**qkwargs)
     docs = results.get("documents", [[]])[0]
     elapsed = time.perf_counter() - t0
     log.info(
@@ -127,69 +193,43 @@ def synthesize_answer_with_llm(
         )
 
     log.info(
-        "synthesize_answer_with_llm: chunks=%s openai=%s",
+        "synthesize_answer_with_llm: chunks=%s ollama_base=%s",
         len(context_chunks),
-        bool(openai_client),
+        bool(ollama_base_url),
     )
-
-    if not openai_client:
-        # No LLM: show raw chunks as a transparent fallback
-        joined = "\n\n---\n\n".join(
-            f"[Source {i + 1}]\n{chunk}" for i, chunk in enumerate(context_chunks)
-        )
-        return (
-            "Here is what I found in the knowledge base (LLM synthesis is disabled):\n\n"
-            + joined
-        )
 
     context = "\n\n---\n\n".join(
         f"[Chunk {i + 1}]\n{chunk}" for i, chunk in enumerate(context_chunks)
     )
 
-    try:
-        t0 = time.perf_counter()
-        response = openai_client.chat.completions.create(
-            model=openai_model,
-            temperature=0.3,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a helpful assistant for PBS Wisconsin internal project data. "
-                        "Answer the user's question using ONLY the provided context chunks. "
-                        "If the context is insufficient, say so clearly and suggest what might be missing. "
-                        "Be concise and accurate. Use English only."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        f"Original user question:\n{original_question}\n\n"
-                        f"Clarified interpretation (used for retrieval):\n{clarified_interpretation}\n\n"
-                        f"Context from knowledge base:\n{context}"
-                    ),
-                },
-            ],
-        )
-        text = (response.choices[0].message.content or "").strip()
+    prompt = (
+        "You are a helpful assistant for PBS Wisconsin internal project data. "
+        "Answer the user's question using ONLY the provided context chunks below. "
+        "If the context is insufficient, say so clearly and suggest what might be missing. "
+        "Be concise and accurate. Use English only.\n\n"
+        f"Original user question:\n{original_question}\n\n"
+        f"Clarified interpretation (used for retrieval):\n{clarified_interpretation}\n\n"
+        f"Context from knowledge base:\n{context}"
+    )
+
+    t0 = time.perf_counter()
+    text = ollama_generate(prompt)
+    if text:
         log.info(
-            "synthesize_answer_with_llm: OpenAI OK in %.2fs, out_len=%s",
+            "synthesize_answer_with_llm: Ollama OK in %.2fs, out_len=%s",
             time.perf_counter() - t0,
             len(text),
         )
-        return text or (
-            "I could not generate a response from the retrieved context. "
-            "Try rephrasing your question."
-        )
-    except Exception as e:
-        log.exception("LLM synthesis failed: %s", e)
-        joined = "\n\n---\n\n".join(
-            f"[Source {i + 1}]\n{chunk}" for i, chunk in enumerate(context_chunks)
-        )
-        return (
-            "I retrieved the following from the knowledge base, "
-            "but could not summarize it with the LLM right now:\n\n" + joined
-        )
+        return text
+
+    joined = "\n\n---\n\n".join(
+        f"[Source {i + 1}]\n{chunk}" for i, chunk in enumerate(context_chunks)
+    )
+    return (
+        "Here is what I found in the knowledge base (Ollama unreachable — showing raw chunks). "
+        "Start your VPN/SSH tunnel to localhost:11434 if you expect a summarized answer:\n\n"
+        + joined
+    )
 
 
 def rag_answer_with_retrieval(
@@ -200,7 +240,11 @@ def rag_answer_with_retrieval(
     """
     Full RAG path: embed query + vector search + multiple chunks + LLM answer.
     """
-    chunks = retrieve_chunks(query_for_search)
+    w = None
+    if chroma_filter_projects_only and chroma_projects_table_id:
+        w = {"table_id": chroma_projects_table_id}
+        log.info("retrieve_chunks: scoping to Projects table_id=%s", chroma_projects_table_id)
+    chunks = retrieve_chunks(query_for_search, where=w)
     return synthesize_answer_with_llm(
         original_user_message,
         clarified_for_user,
@@ -249,51 +293,42 @@ def clarify_query_with_llm(user_query: str) -> dict:
         "query_for_search": user_query
     }
 
-    if not openai_client:
-        log.info("clarify_query_with_llm: no OPENAI_API_KEY, using fallback")
+    if not ollama_base_url:
+        log.info("clarify_query_with_llm: OLLAMA_BASE_URL empty, using fallback")
         return fallback
 
-    try:
-        t0 = time.perf_counter()
-        log.info("clarify_query_with_llm: calling OpenAI model=%s", openai_model)
-        response = openai_client.chat.completions.create(
-            model=openai_model,
-            temperature=0.2,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You help rewrite user questions before retrieval. "
-                        "Return strict JSON with keys: clarified_for_user, query_for_search. "
-                        "Use English only. "
-                        "clarified_for_user should be a polite confirmation sentence in English. "
-                        "query_for_search should be concise keywords/sentence optimized for vector search."
-                    )
-                },
-                {
-                    "role": "user",
-                    "content": f"Original user question:\n{user_query}"
-                }
-            ],
-            response_format={"type": "json_object"}
-        )
+    prompt = (
+        "You rewrite user questions before retrieval. Reply with ONLY a JSON object (no markdown fences), "
+        "with exactly these keys: \"clarified_for_user\", \"query_for_search\". Use English only. "
+        "clarified_for_user: a polite confirmation sentence. "
+        "query_for_search: concise keywords for vector search; include specific project or show titles "
+        "from the user message verbatim when present.\n\n"
+        f"Original user question:\n{user_query}"
+    )
 
-        content = response.choices[0].message.content or "{}"
-        parsed = json.loads(content)
-        clarified_for_user = parsed.get("clarified_for_user", user_query).strip() or user_query
-        query_for_search = parsed.get("query_for_search", user_query).strip() or user_query
-
-        log.info(
-            "clarify_query_with_llm: OK in %.2fs",
-            time.perf_counter() - t0,
-        )
-        return {
-            "clarified_for_user": clarified_for_user,
-            "query_for_search": query_for_search
-        }
-    except Exception as e:
-        log.exception("clarify_query_with_llm failed: %s", e)
+    t0 = time.perf_counter()
+    log.info("clarify_query_with_llm: calling Ollama model=%s", ollama_model)
+    content = ollama_generate(prompt)
+    parsed = _extract_json_object(content or "") if content else None
+    if not parsed:
+        log.warning("clarify_query_with_llm: bad or empty JSON from Ollama, using fallback")
         return fallback
+
+    clarified_for_user = str(parsed.get("clarified_for_user", user_query) or user_query).strip()
+    query_for_search = str(parsed.get("query_for_search", user_query) or user_query).strip()
+    if not clarified_for_user:
+        clarified_for_user = user_query
+    if not query_for_search:
+        query_for_search = user_query
+
+    log.info(
+        "clarify_query_with_llm: OK in %.2fs",
+        time.perf_counter() - t0,
+    )
+    return {
+        "clarified_for_user": clarified_for_user,
+        "query_for_search": query_for_search,
+    }
 
 
 def get_conversation_key(channel_id: str, user_id: str) -> str:

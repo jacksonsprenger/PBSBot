@@ -7,6 +7,9 @@ venv/
 chroma_pbs/
 chroma_db/
 
+# Local sync logs
+sync_chroma_full.log
+
 # Python
 __pycache__/
 *.py[cod]
