@@ -14,6 +14,9 @@ from dotenv import load_dotenv
 import chromadb
 from chromadb.utils import embedding_functions
 
+from slack_sdk import WebClient
+from slack_sdk.socket_mode import SocketModeClient
+
 # -----------------------------
 # Load environment variables
 # -----------------------------
