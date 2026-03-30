@@ -116,49 +116,35 @@ def handle_dm(message, say):
 
         say(f"<@{user}>\n{answer}")
 
-# Define the view for the App Home Tab
-def build_home_view():
-    return {
-        "type": "home",
-        "blocks": [
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": "*Welcome to your App Home!*"
-                }
-            },
-            {
-                "type": "divider"
-            },
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": "This is a custom view updated using the `views.publish` method in Python Socket Mode."
-                }
-            },
-            {
-                "type": "image",
-                "image_url": "https://api.slack.com",
-                "alt_text": "Golden Gate Bridge"
-            }
-        ]
-    }
-
-# Listen for the app_home_opened event
-@app.event("app_home_opened") # TODO - Something is still wrong with this, I need to figure out to debug
-def update_home_tab(client, event, logger):
+@app.event("app_home_opened")
+def publish_home_tab(user_id):
+    print(f"Testing Home tab")
     try:
-        # call views.publish to update the home tab
-        client.views_publish(
-            user_id=event["user"],
-            view=build_home_view()
+        app.client.views_publish(
+            user_id=user_id,
+            view={
+                "type": "home",
+                "blocks": [
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f"*Welcome home, <@{user_id}>! :house:*"
+                        }
+                    },
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": "Learn how home tabs can be more useful and interactive in the [documentation](https://docs.slack.dev/surfaces/app-home)."
+                        }
+                    }
+                ]
+            }
         )
-        logger.info(f"Published home tab for user {event['user']}")
-        print("Home page should be published")
+        print(f"Home tab published for user {user_id}")
     except Exception as e:
-        logger.error(f"Error publishing home tab: {e}")
+        print(f"Error publishing home tab: {e}")
 
 # -----------------------------
 # Start Slack Bot
@@ -170,3 +156,6 @@ if __name__ == "__main__":
     )
     print("🤖 PBS Bot is running!")
     handler.start()
+
+    test_user_id = "U0AJPLXNA4B"
+    publish_home_tab(test_user_id)
