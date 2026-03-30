@@ -78,7 +78,7 @@ Open `scripts/llm_connect.py` and update the config block:
 ```python
 SSH_HOST = "144.92.195.30"
 SSH_USER = "capstone"
-MODEL    = "deepseek-coder:6.7b"
+MODEL    = "llama3.1:8b"
 ```
 
 Then run:
