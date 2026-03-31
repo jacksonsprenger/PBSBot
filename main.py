@@ -492,10 +492,31 @@ def handle_message(message, say):
 
     log.debug("message ignored: channel_type=%s", channel_type)
 
+# -----------------------------
+# Slash Commands & Responses
+# -----------------------------
+
+# Because we don't have a working app homepage, this is my current solution - slash commands to help give the user more context
+@app.command("/intro")
+def intro_function(ack, say):
+    ack()
+    say(f"Hello, I am PBSBot. I am here to assist with finding information from Airtable. In order to best help, please provide as much information as possible in your query.")
+    say(f"If you ever need my help, just @PBSBot and I'll be there!")
+    say(f"If you need help with understanding what questions I can assist with, just call /help")
+
+@app.command("/help")
+def help_function(ack, say):
+    ack()
+    say(f"I can assist with finding information about project data that is stored in Airtable.")
+    say(f"For any request, I will interpret your question, as you to confirm, and then return the closest related information.")
+    say(f"If you are looking for information about a program that has lots of similar names (such as Wisconsin Life), I recommend including other identifiers, such as year, season, and/or episode for best results.")
+
 
 # -----------------------------
 # Start Slack Bot
 # -----------------------------
+
+#TODO - need to do some testing of getting this working in Socket Mode
 
 @app.event("app_home_opened")
 def publish_home_tab(user_id):
