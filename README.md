@@ -105,10 +105,8 @@ The **`tools/llm_connect.py`** script connects to a remote LLM over SSH tunnel f
 ### Configure and run
 
 Open `tools/llm_connect.py` and update the config block:
-```python
-SSH_HOST = "144.92.195.30"
-SSH_USER = "capstone"
-MODEL    = "llama3.1:8b"
+```
+ssh capstone@144.92.195.30
 ```
 
 Then run:
