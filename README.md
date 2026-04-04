@@ -64,6 +64,18 @@ python explore_schema.py
 
 ---
 
+## Docker (VM)
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+docker compose run --rm pbsbot python scripts/sync_airtable_to_chroma.py
+```
+
+Details: **[docs/DOCKER.md](docs/DOCKER.md)** (Ollama from the container, cron, troubleshooting).
+
+---
+
 ## Connecting to the Remote LLM
 
 The `scripts/llm_connect.py` script connects to a remote LLM over SSH tunnel for local testing.

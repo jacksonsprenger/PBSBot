@@ -56,7 +56,8 @@ MAX_SLACK_CHARS = 3500
 # -----------------------------
 log.info("Connecting to ChromaDB...")
 
-client = chromadb.PersistentClient(path="./chroma_db")
+_chroma_path = os.getenv("CHROMA_PERSIST_DIR", "./chroma_db")
+client = chromadb.PersistentClient(path=_chroma_path)
 
 embedding_function = embedding_functions.DefaultEmbeddingFunction()
 
@@ -69,9 +70,9 @@ try:
     _n = projects_collection.count()
     if _n == 0:
         log.warning(
-            "Chroma collection 'pbs_projects' is empty. Run: "
+            "Chroma collection 'pbs_projects' is empty. Run sync (needs AIRTABLE_* in .env): "
             ".venv/bin/python3 scripts/sync_airtable_to_chroma.py "
-            "(needs AIRTABLE_* in .env)"
+            "or: docker compose run --rm pbsbot python scripts/sync_airtable_to_chroma.py"
         )
     else:
         log.info("ChromaDB connected: pbs_projects has %s document(s).", _n)

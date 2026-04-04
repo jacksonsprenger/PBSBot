@@ -1,0 +1,27 @@
+# PBSBot on a VM — Slack Socket Mode (outbound HTTPS only; no inbound port).
+#
+#   cp .env.example .env   # fill SLACK_*, AIRTABLE_*, OLLAMA_* as needed
+#   docker compose up -d --build
+#   docker compose run --rm pbsbot python scripts/sync_airtable_to_chroma.py
+#
+# Ollama on the same VM but outside Docker:
+#   In .env set OLLAMA_BASE_URL=http://host.docker.internal:11434
+#   (Linux Compose below adds host.docker.internal → host gateway)
+
+services:
+  pbsbot:
+    build: .
+    container_name: pbsbot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      CHROMA_PERSIST_DIR: /app/chroma_db
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - chroma_data:/app/chroma_db
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  chroma_data:
