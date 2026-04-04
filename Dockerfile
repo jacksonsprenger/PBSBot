@@ -15,10 +15,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
-COPY explore_schema.py main.py ./
-COPY scripts/ ./scripts/
+COPY pbsbot/ ./pbsbot/
+COPY tools/ ./tools/
+COPY main.py ./
 
 RUN mkdir -p /app/chroma_db
 
-# Named volume mounts at /app/chroma_db need to stay writable.
-CMD ["python", "main.py"]
+CMD ["python", "-m", "pbsbot"]

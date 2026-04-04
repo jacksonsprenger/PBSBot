@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Build a linux/amd64 image on Apple Silicon (or any host) for x86_64 VMs.
-# Usage:
-#   ./scripts/docker-build-amd64.sh thugken/pbs_bot:latest          # load into local Docker
-#   ./scripts/docker-build-amd64.sh thugken/pbs_bot:latest --push   # push to Hub
+# Usage (from repo root):
+#   ./deploy/docker-build-amd64.sh thugken/pbs_bot:latest
+#   ./deploy/docker-build-amd64.sh thugken/pbs_bot:latest --push
 
 set -euo pipefail
 TAG="${1:?Usage: $0 <image:tag> [--push]}"

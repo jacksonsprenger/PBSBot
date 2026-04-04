@@ -2,9 +2,9 @@
 #
 #   cp .env.example .env   # fill SLACK_*, AIRTABLE_*, OLLAMA_* as needed
 #   docker compose up -d --build
-#   docker compose run --rm pbsbot python scripts/sync_airtable_to_chroma.py
+#   docker compose run --rm pbsbot python -m pbsbot.ingestion.sync_airtable
 #
-# Hub image on an AMD64 VM (build on Apple Silicon with scripts/docker-build-amd64.sh):
+# Hub image on an AMD64 VM (build on Apple Silicon with deploy/docker-build-amd64.sh):
 #   docker compose -f docker-compose.hub.yml up -d
 #
 # Ollama on the VM host: defaults to host.docker.internal:11434 (see main.py + extra_hosts).

@@ -1,9 +1,3 @@
-"""
-Backward-compatible entrypoint. Prefer:
-
-  python -m pbsbot
-"""
-
 from pbsbot.slack.app import run
 
 if __name__ == "__main__":

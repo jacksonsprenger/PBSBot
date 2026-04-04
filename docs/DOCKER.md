@@ -7,7 +7,7 @@ Slack **Socket Mode** opens an outbound connection to Slack. The VM needs **egre
 Images built on a Mac (arm64) **will not run** on typical cloud/VM CPUs (amd64). Rebuild for Intel/AMD:
 
 ```bash
-./scripts/docker-build-amd64.sh thugken/pbs_bot:latest --push
+./deploy/docker-build-amd64.sh thugken/pbs_bot:latest --push
 ```
 
 Then on the VM: `docker compose -f docker-compose.hub.yml pull && docker compose -f docker-compose.hub.yml up -d`
@@ -32,18 +32,18 @@ docker compose -f docker-compose.hub.yml up -d
 ## Chroma index (first deploy or after Airtable changes)
 
 ```bash
-docker compose run --rm pbsbot python scripts/sync_airtable_to_chroma.py
+docker compose run --rm pbsbot python -m pbsbot.ingestion.sync_airtable
 # Full rebuild:
-docker compose run --rm pbsbot python scripts/sync_airtable_to_chroma.py --reset
+docker compose run --rm pbsbot python -m pbsbot.ingestion.sync_airtable --reset
 ```
 
-While the bot is running, sync updates the same volume; `main.py` will reopen Chroma once if a query hits a stale index. You can still `docker compose restart pbsbot` after a large `--reset` sync if anything looks off.
+While the bot is running, sync updates the same volume; the bot reopens Chroma once if a query hits a stale index. You can still `docker compose restart pbsbot` after a large `--reset` sync if anything looks off.
 
 Inside the container, `CHROMA_PERSIST_DIR` is `/app/chroma_db` (set by Compose). Your `.env` may still say `./chroma_db` for local runs; Compose overrides it for the service.
 
 ## Ollama (local on the VM, not “external” SaaS)
 
-Compose and `main.py` default to **`http://host.docker.internal:11434`** when `OLLAMA_BASE_URL` is unset (Docker) so the bot reaches Ollama on the **VM host**.
+Compose defaults to **`http://host.docker.internal:11434`** when `OLLAMA_BASE_URL` is unset (Docker) so the bot reaches Ollama on the **VM host**.
 
 On the **host**, if Ollama only listens on `127.0.0.1`, Docker may not reach it. Prefer:
 
@@ -59,7 +59,7 @@ Then `ollama serve` (or restart the service) so it accepts traffic from the Dock
 ## Cron sync (host)
 
 ```cron
-0 6 * * * cd /path/to/PBSBot && docker compose run --rm pbsbot python scripts/sync_airtable_to_chroma.py >> /var/log/pbsbot-sync.log 2>&1
+0 6 * * * cd /path/to/PBSBot && docker compose run --rm pbsbot python -m pbsbot.ingestion.sync_airtable >> /var/log/pbsbot-sync.log 2>&1
 ```
 
 ## Troubleshooting
