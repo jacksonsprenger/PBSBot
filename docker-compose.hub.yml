@@ -1,0 +1,25 @@
+# Use a pre-pushed Hub image (for VMs). Build for linux/amd64 from Mac:
+#   ./scripts/docker-build-amd64.sh thugken/pbs_bot:latest --push
+#
+#   docker compose -f docker-compose.hub.yml up -d
+#   docker compose -f docker-compose.hub.yml run --rm pbsbot python scripts/sync_airtable_to_chroma.py
+
+services:
+  pbsbot:
+    image: ${PBSBOT_IMAGE:-thugken/pbs_bot:latest}
+    container_name: pbsbot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      CHROMA_PERSIST_DIR: /app/chroma_db
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
+    volumes:
+      - chroma_data:/app/chroma_db
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  chroma_data:

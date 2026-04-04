@@ -27,6 +27,7 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 from dotenv import load_dotenv
 
 import chromadb
+import chromadb.errors
 from chromadb.utils import embedding_functions
 
 # -----------------------------
@@ -35,9 +36,24 @@ from chromadb.utils import embedding_functions
 load_dotenv()
 
 app = App(token=os.getenv("SLACK_BOT_TOKEN"))
-# Campus Ollama (same as scripts/llm_connect.py — VPN + SSH tunnel → http://127.0.0.1:11434)
-ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").strip().rstrip("/")
-ollama_model = os.getenv("OLLAMA_MODEL", "deepseek-coder:6.7b")
+
+
+def _resolve_ollama_base_url() -> str:
+    """
+    Local Ollama: on the host use 127.0.0.1; inside Docker the host is not loopback,
+    so default to host.docker.internal (requires extra_hosts in compose on Linux).
+    """
+    raw = (os.getenv("OLLAMA_BASE_URL") or "").strip()
+    if raw:
+        return raw.rstrip("/")
+    if os.path.exists("/.dockerenv"):
+        return "http://host.docker.internal:11434"
+    return "http://127.0.0.1:11434"
+
+
+# Ollama on VM host (Docker) or laptop (127.0.0.1 / SSH tunnel like scripts/llm_connect.py)
+ollama_base_url = _resolve_ollama_base_url()
+ollama_model = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
 ollama_timeout = int(os.getenv("OLLAMA_TIMEOUT", "120"))
 # Number of Chroma chunks to retrieve before LLM synthesis (default 5)
 chroma_n_results = int(os.getenv("CHROMA_N_RESULTS", "5"))
@@ -78,6 +94,31 @@ try:
         log.info("ChromaDB connected: pbs_projects has %s document(s).", _n)
 except Exception as e:
     log.info("ChromaDB connected (could not count documents: %s)", e)
+
+log.info(
+    "Ollama: base_url=%s model=%s (set OLLAMA_BASE_URL / OLLAMA_MODEL to override)",
+    ollama_base_url,
+    ollama_model,
+)
+
+
+def reconnect_chroma_client() -> None:
+    """
+    Re-open the on-disk store. Needed when another process (e.g. sync job) wrote to the
+    same CHROMA_PERSIST_DIR while this process still held an old Chroma handle — otherwise
+    queries can fail with hnsw / 'Nothing found on disk'.
+    """
+    global client, projects_collection
+    log.warning(
+        "Reopening Chroma at %r (disk was updated; refreshing client handle)",
+        _chroma_path,
+    )
+    client = chromadb.PersistentClient(path=_chroma_path)
+    projects_collection = client.get_or_create_collection(
+        name="pbs_projects",
+        embedding_function=embedding_function,
+    )
+
 
 # Conversation state for "confirm before retrieval"
 pending_confirmations = {}
@@ -169,7 +210,18 @@ def retrieve_chunks(
     }
     if where:
         qkwargs["where"] = where
-    results = projects_collection.query(**qkwargs)
+
+    for attempt in range(2):
+        try:
+            results = projects_collection.query(**qkwargs)
+            break
+        except chromadb.errors.InternalError as e:
+            if attempt == 0:
+                log.warning("Chroma query failed (will reopen DB once): %s", e)
+                reconnect_chroma_client()
+                continue
+            raise
+
     docs = results.get("documents", [[]])[0]
     elapsed = time.perf_counter() - t0
     log.info(

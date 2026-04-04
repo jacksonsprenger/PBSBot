@@ -72,7 +72,9 @@ docker compose up -d --build
 docker compose run --rm pbsbot python scripts/sync_airtable_to_chroma.py
 ```
 
-Details: **[docs/DOCKER.md](docs/DOCKER.md)** (Ollama from the container, cron, troubleshooting).
+**Docker Hub on an AMD64 VM:** build with `./scripts/docker-build-amd64.sh thugken/pbs_bot:latest --push`, then on the VM use `docker compose -f docker-compose.hub.yml up -d` (see **docs/DOCKER.md**).
+
+Details: **[docs/DOCKER.md](docs/DOCKER.md)** (Ollama on the host, `exec format error` / multi-arch, cron).
 
 ---
 
