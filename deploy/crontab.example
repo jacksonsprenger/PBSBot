@@ -1,0 +1,12 @@
+# Example: daily sync at 6:00 AM (machine local time)
+# Replace PATH_TO_PBSBOT with the absolute path to this repository.
+# The Mac/PC must be awake at that time; cron does not run if the machine is off.
+# This does NOT run when you only start main.py — schedule this separately from the bot.
+#
+# crontab -e
+# then add one line:
+
+0 6 * * * cd /PATH_TO_PBSBOT && .venv/bin/python3 -m pbsbot.ingestion.sync_airtable >> /tmp/pbsbot_sync.log 2>&1
+
+# Full rebuild once a week (Sundays 3:00 AM) — optional
+# 0 3 * * 0 cd /PATH_TO_PBSBOT && .venv/bin/python3 -m pbsbot.ingestion.sync_airtable --reset >> /tmp/pbsbot_sync.log 2>&1
