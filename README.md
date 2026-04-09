@@ -6,7 +6,7 @@ A Slack chatbot for PBS Wisconsin that connects to their Airtable project base. 
 
 | Path | Responsibility |
 |------|----------------|
-| **`pbsbot/slack/`** | Bolt app, Socket Mode, DM/channel flow, confirmations |
+| **`pbsbot/slack/`** | Bolt app, Socket Mode, Block Kit UI (`blocks.py`), thread flow |
 | **`pbsbot/rag/`** | Retrieval routing, Chroma query + answer assembly |
 | **`pbsbot/llm/`** | Ollama HTTP client (clarify + synthesize) |
 | **`pbsbot/chroma/`** | Persistent Chroma client, reconnect-on-stale |
