@@ -2,7 +2,7 @@
 """
 Batch sync: Airtable tables → ChromaDB (same store the Slack bot reads).
 
-Designed to run on a schedule (e.g. cron) separately from main.py.
+Designed to run on a schedule (e.g. cron) separately from the Slack bot process.
 
 This script:
   1) Fetches one table (default) or all tables in the base (`--all-tables`)
@@ -16,10 +16,10 @@ Environment:
   CHROMA_PERSIST_DIR (default ./chroma_db)
   CHROMA_COLLECTION_NAME (default pbs_projects — must match main.py)
 
-Usage (use the same venv as the Slack bot — plain `python` often has no deps):
-  .venv/bin/python3 scripts/sync_airtable_to_chroma.py
-  .venv/bin/python3 scripts/sync_airtable_to_chroma.py --reset                # full rebuild (single table)
-  .venv/bin/python3 scripts/sync_airtable_to_chroma.py --reset --all-tables # full rebuild (all tables)
+Usage (repo root, project venv):
+  .venv/bin/python3 -m pbsbot.ingestion.sync_airtable
+  .venv/bin/python3 -m pbsbot.ingestion.sync_airtable --reset
+  .venv/bin/python3 -m pbsbot.ingestion.sync_airtable --reset --all-tables
 """
 
 from __future__ import annotations
@@ -188,10 +188,9 @@ def sync(
         from chromadb.utils import embedding_functions
     except ImportError as e:
         log.error(
-            "Missing Python package (%s). The sync script needs the project dependencies.\n"
-            "  1) cd to the repo root\n"
-            "  2) .venv/bin/python3 -m pip install -r requirements.txt\n"
-            "  3) .venv/bin/python3 scripts/sync_airtable_to_chroma.py",
+            "Missing Python package (%s). Install project dependencies from repo root:\n"
+            "  .venv/bin/python3 -m pip install -r requirements.txt\n"
+            "  .venv/bin/python3 -m pbsbot.ingestion.sync_airtable",
             e,
         )
         return 1

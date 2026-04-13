@@ -76,7 +76,7 @@ SLACK_APP_TOKEN=xapp-1-1234-5678-...
 Save the file, then run:
 
 ```bash
-venv/bin/python3 main.py
+.venv/bin/python3 -m pbsbot
 ```
 
 or
