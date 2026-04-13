@@ -33,7 +33,7 @@ OLLAMA_REMOTE_HOST = "localhost"             # Ollama host as seen from the remo
 OLLAMA_REMOTE_PORT = 11434                   # Port Ollama is listening on inside the container
 LOCAL_PORT = 11434                           # Local port to forward to
 
-MODEL = "deepseek-coder:6.7b"                # Model name being served by Ollama
+MODEL = "llama3.1:8b"                # Model name being served by Ollama
 # ---------------------------------------------------------------------------
 
 
