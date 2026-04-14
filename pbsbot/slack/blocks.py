@@ -97,6 +97,22 @@ def intent_picker_blocks(user_id: str) -> list[dict]:
             },
         },
         {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": (
+                    "*ℹ️ More Information*\n"
+                    "Tips for Getting Started and Troubleshooting"
+                ),
+            },
+            "accessory": {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "Select", "emoji": True},
+                "action_id": "pbs_intent",
+                "value": "staff",
+            },
+        },
+        {
             "type": "context",
             "elements": [
                 {
@@ -158,6 +174,7 @@ def route_label(route: str) -> str:
         "staff": "Staff & roles",
         "tasks": "Tasks & deadlines",
         "contacts": "Contacts & partners",
+        "information": "More Information"
     }
     return labels.get(route, "this topic")
 
@@ -165,42 +182,77 @@ def route_label(route: str) -> str:
 def build_question_modal_view(route: str, private_metadata: str) -> dict:
     """Modal with multiline question field (Slack does not allow inputs inside channel messages)."""
     title = route_label(route)
-    return {
-        "type": "modal",
-        "callback_id": QUESTION_MODAL_CALLBACK_ID,
-        "private_metadata": private_metadata,
-        "title": {"type": "plain_text", "text": "Ask PBS", "emoji": True},
-        "submit": {"type": "plain_text", "text": "Submit", "emoji": True},
-        "close": {"type": "plain_text", "text": "Cancel", "emoji": True},
-        "blocks": [
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"*Topic:* {title}\nEnter your question below, then press *Submit*.",
+    if(title == "information"):
+        return{
+            "type": "modal",
+            "callback_id": QUESTION_MODAL_CALLBACK_ID,
+            "title": {"type": "plain_text", "text": "Ask PBS", "emoji": True},
+            "close": {"type": "plain_text", "text": "Cancel", "emoji": True},
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"Hello, I am PBSBot. I am here to assist with finding information from Airtable."
+                    }
                 },
-            },
-            {
-                "type": "input",
-                "block_id": QUESTION_BLOCK_ID,
-                "label": {"type": "plain_text", "text": "Your question", "emoji": True},
-                "element": {
-                    "type": "plain_text_input",
-                    "action_id": QUESTION_INPUT_ACTION_ID,
-                    "multiline": True,
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "e.g. Tell me about the Badger project promo dates",
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"For any request, I will interpret your question, as you to confirm, and then return the closest related information."
+                    }
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"If you are looking for information about a program that has lots of similar names (such as Wisconsin Life), I recommend including other identifiers, such as year, season, and/or episode for best results."
+                    }
+                }
+            ]
+        }
+    else :
+        return {
+            "type": "modal",
+            "callback_id": QUESTION_MODAL_CALLBACK_ID,
+            "private_metadata": private_metadata,
+            "title": {"type": "plain_text", "text": "Ask PBS", "emoji": True},
+            "submit": {"type": "plain_text", "text": "Submit", "emoji": True},
+            "close": {"type": "plain_text", "text": "Cancel", "emoji": True},
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*Topic:* {title}\nEnter your question below, then press *Submit*.",
                     },
                 },
-            },
-        ],
-    }
+                {
+                    "type": "input",
+                    "block_id": QUESTION_BLOCK_ID,
+                    "label": {"type": "plain_text", "text": "Your question", "emoji": True},
+                    "element": {
+                        "type": "plain_text_input",
+                        "action_id": QUESTION_INPUT_ACTION_ID,
+                        "multiline": True,
+                        "placeholder": {
+                            "type": "plain_text",
+                            "text": "e.g. Tell me about the Badger project promo dates",
+                        },
+                    },
+                },
+            ],
+        }
+    
 
 
 def question_modal_private_metadata(channel_id: str, user_id: str, route: str) -> str:
     return json.dumps({"c": channel_id, "u": user_id, "r": route})
 
+#TODO create a modal that pops up with a generalized overview of how PBSBot works and helpful troubleshooting tips, user interaction should be limited, maybe a "was this helpful button"
+#TODO figure out a way to break the response type off from the others so it doesn't ask a specific question/go to the AI for assistance
+# This section should be limited to concrete input + output, nothing related to the AI
 
 def rephrase_question_blocks(route: str) -> list[dict]:
     """After “No” on confirm — reopen the question modal via button (needs interactive trigger)."""
