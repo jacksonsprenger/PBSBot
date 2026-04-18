@@ -102,7 +102,7 @@ def execute_confirmed_search(conv_key: str) -> str:
         f"_RAG search is enabled for **project information** right now._\n"
         f"You asked in the *{route}* category — try rephrasing as a project question, "
         "or pick *Project information* from the menu."
-    )
+    ) #Do we want it to say RAG search? I can see why that is helpful for testing, but it doesn't really mean anything to users and just creates more clutter
 
 
 def cancel_confirmation(conv_key: str) -> tuple[str, list[dict] | None]:

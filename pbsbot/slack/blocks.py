@@ -69,22 +69,6 @@ def intent_picker_blocks(user_id: str) -> list[dict]:
             "text": {
                 "type": "mrkdwn",
                 "text": (
-                    "*✅ Tasks & deadlines*\n"
-                    "Milestones, due dates, and task-related lookups."
-                ),
-            },
-            "accessory": {
-                "type": "button",
-                "text": {"type": "plain_text", "text": "Select", "emoji": True},
-                "action_id": "pbs_intent",
-                "value": "tasks",
-            },
-        },
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": (
                     "*📇 Contacts & partners*\n"
                     "Emails, phones, and external contacts when available."
                 ),
@@ -109,7 +93,7 @@ def intent_picker_blocks(user_id: str) -> list[dict]:
                 "type": "button",
                 "text": {"type": "plain_text", "text": "Select", "emoji": True},
                 "action_id": "pbs_intent",
-                "value": "staff",
+                "value": "information",
             },
         },
         {
@@ -182,37 +166,8 @@ def route_label(route: str) -> str:
 def build_question_modal_view(route: str, private_metadata: str) -> dict:
     """Modal with multiline question field (Slack does not allow inputs inside channel messages)."""
     title = route_label(route)
-    if(title == "information"):
-        return{
-            "type": "modal",
-            "callback_id": QUESTION_MODAL_CALLBACK_ID,
-            "title": {"type": "plain_text", "text": "Ask PBS", "emoji": True},
-            "close": {"type": "plain_text", "text": "Cancel", "emoji": True},
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"Hello, I am PBSBot. I am here to assist with finding information from Airtable."
-                    }
-                },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"For any request, I will interpret your question, as you to confirm, and then return the closest related information."
-                    }
-                },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"If you are looking for information about a program that has lots of similar names (such as Wisconsin Life), I recommend including other identifiers, such as year, season, and/or episode for best results."
-                    }
-                }
-            ]
-        }
-    else :
+
+    if(route == "projects"):
         return {
             "type": "modal",
             "callback_id": QUESTION_MODAL_CALLBACK_ID,
@@ -244,15 +199,148 @@ def build_question_modal_view(route: str, private_metadata: str) -> dict:
                 },
             ],
         }
-    
 
+    if(route == "staff"):
+        return{
+            "type": "modal",
+            "callback_id": QUESTION_MODAL_CALLBACK_ID,
+            "private_metadata": private_metadata,
+            "title": {"type": "plain_text", "text": "Ask PBS", "emoji": True},
+            "submit": {"type": "plain_text", "text": "Submit", "emoji": True},
+            "close": {"type": "plain_text", "text": "Cancel", "emoji": True},
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "For contact information for a specific PBS staff member, please refer to the following:"
+                },
+			"accessory": {
+				"type": "button",
+				"text": {
+					"type": "plain_text",
+					"text": "Click for Airtable Staff Interface",
+					"emoji": true
+				},
+				"value": "Click Me",
+				"url": "https://airtable.com/appw0xxA1o9OlFg8t/pagsHP5pHe8hR1p1U?jsZ6m=recoj8YTeLDgqblV0&6gFPw=recPPA9Zvc4cnLXlq",
+				"action_id": "button-action"
+			}
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "To ask a question about who is on the Staff for a Project, return to the Project Information Tab."
+			}
+		}
+            ]
+        } 
+    if(route == "contacts"):
+        return{
+             "type": "modal",
+            "callback_id": QUESTION_MODAL_CALLBACK_ID,
+            "private_metadata": private_metadata,
+            "title": {"type": "plain_text", "text": "Ask PBS", "emoji": True},
+            "submit": {"type": "plain_text", "text": "Submit", "emoji": True},
+            "close": {"type": "plain_text", "text": "Cancel", "emoji": True},
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "For contact information for a specific PBS staff member, please refer to the following:"
+                },
+			"accessory": {
+				"type": "button",
+				"text": {
+					"type": "plain_text",
+					"text": "Click for Airtable Contacts Interface",
+					"emoji": true
+				},
+				"value": "Click Me",
+				"url": "https://airtable.com/appw0xxA1o9OlFg8t/pagHqsYqqCAdA2oXi",
+				"action_id": "button-action"
+			}
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "To ask a question about project Contacts for a Project, return to the Project Information Tab."
+			}
+		}
+        ]
+        }
+
+    if(route == "information"):
+        return{
+            "type": "modal",
+            "callback_id": QUESTION_MODAL_CALLBACK_ID,
+            "private_metadata": private_metadata,
+            "title": {"type": "plain_text", "text": "Ask PBS", "emoji": True},
+            "close": {"type": "plain_text", "text": "Exit", "emoji": True},
+            "blocks": [
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "Hey there 👋 I'm PBSBot. I am here to assist with finding information from Airtable."
+			}
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "For any request, I will interpret your question, as you to confirm the question intent, and then return the closest related information. If I don't have sufficient information to answer, I will return a response saying so."
+			}
+		},
+		{
+			"type": "rich_text",
+			"elements": [
+				{
+					"type": "rich_text_section",
+					"elements": [
+						{
+							"type": "text",
+							"text": "Here are a few hints to get you started:\n"
+						}
+					]
+				},
+				{
+					"type": "rich_text_list",
+					"style": "bullet",
+					"indent": 0,
+					"border": 0,
+					"elements": [
+						{
+							"type": "rich_text_section",
+							"elements": [
+								{
+									"type": "text",
+									"text": "Select the button based on the category your question falls into, such as: Project Information, Staff & Roles, and Contacts & Partners"
+								}
+							]
+						},
+						{
+							"type": "rich_text_section",
+							"elements": [
+								{
+									"type": "text",
+									"text": "If you are looking for information about a program that has lots of similar names (such as Wisconsin Life), make sure to include other identifiers, such as year, season, and episode number for best results."
+								}
+							]
+						}
+					]
+				}
+			]
+		}
+	]
+        }
+        
 
 def question_modal_private_metadata(channel_id: str, user_id: str, route: str) -> str:
     return json.dumps({"c": channel_id, "u": user_id, "r": route})
-
-#TODO create a modal that pops up with a generalized overview of how PBSBot works and helpful troubleshooting tips, user interaction should be limited, maybe a "was this helpful button"
-#TODO figure out a way to break the response type off from the others so it doesn't ask a specific question/go to the AI for assistance
-# This section should be limited to concrete input + output, nothing related to the AI
 
 def rephrase_question_blocks(route: str) -> list[dict]:
     """After “No” on confirm — reopen the question modal via button (needs interactive trigger)."""
