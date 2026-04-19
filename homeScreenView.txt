@@ -1,0 +1,100 @@
+## Copied here for safe keeping, while further editting occurs with the home page
+## Use: https://app.slack.com/block-kit-builder/T0ADRU2RW3B 
+
+{
+	"type": "home",
+	"blocks": [
+		{
+			"type": "header",
+			"text": {
+				"type": "plain_text",
+				"text": "Hello, I am PBS Bot.",
+				"emoji": true
+			},
+			"level": 1
+		},
+		{
+			"type": "header",
+			"text": {
+				"type": "plain_text",
+				"text": "I am here to assist with finding information from Airtable",
+				"emoji": true
+			},
+			"level": 2
+		},
+		{
+			"type": "divider"
+		},
+		{
+			"type": "rich_text",
+			"elements": [
+				{
+					"type": "rich_text_section",
+					"elements": [
+						{
+							"type": "text",
+							"text": "In order to best help, please provide as much information as possible in your query\n\n"
+						}
+					]
+				}
+			]
+		},
+		{
+			"type": "rich_text",
+			"elements": [
+				{
+					"type": "rich_text_section",
+					"elements": [
+						{
+							"type": "text",
+							"text": "Here are some example questions to get you started:\n"
+						}
+					]
+				},
+				{
+					"type": "rich_text_list",
+					"style": "bullet",
+					"indent": 0,
+					"elements": [
+						{
+							"type": "rich_text_section",
+							"elements": [
+								{
+									"type": "text",
+									"text": "What is the current QC status of [project]?"
+								}
+							]
+						},
+						{
+							"type": "rich_text_section",
+							"elements": [
+								{
+									"type": "text",
+									"text": "Who is the editor working on [project]?"
+								}
+							]
+						},
+						{
+							"type": "rich_text_section",
+							"elements": [
+								{
+									"type": "text",
+									"text": "Can I get the contact info for [person/organization]?"
+								}
+							]
+						},
+						{
+							"type": "rich_text_section",
+							"elements": [
+								{
+									"type": "text",
+									"text": "When is [project] scheduled for release?\n\n"
+								}
+							]
+						}
+					]
+				}
+			]
+		}
+	]
+}

@@ -1,4 +1,4 @@
-"""Slack-side dialog: confirmations, yes/no, truncation (Slack UX feature)."""
+"""Slack conversation state: intent picker → modal question → button confirm → RAG."""
 
 from __future__ import annotations
 
@@ -7,9 +7,11 @@ import logging
 from pbsbot import state
 from pbsbot.llm.ollama import clarify_query_with_llm
 from pbsbot.rag.pipeline import rag_answer_with_retrieval, route_query
+from pbsbot.slack.blocks import confirm_blocks, rephrase_question_blocks
 
 log = logging.getLogger("pbs_bot")
 
+# After clarify: + route_override from intent. thread_root_ts is None = main-channel flow.
 pending_confirmations: dict[str, dict] = {}
 
 
@@ -40,58 +42,93 @@ def get_conversation_key(channel_id: str, user_id: str) -> str:
     return f"{channel_id}:{user_id}"
 
 
-def handle_user_query_flow(user: str, channel: str, text: str) -> str:
-    conversation_key = get_conversation_key(channel, user)
-    pending = pending_confirmations.get(conversation_key)
-    log.info(
-        "handle_user_query_flow: user=%s channel=%s pending=%s text_preview=%r",
-        user,
-        channel,
-        bool(pending),
-        (text or "")[:120],
-    )
+def reset_session_for_fresh_menu(conv_key: str) -> None:
+    """New @mention: drop in-flight flows for this user in this channel."""
+    pending_confirmations.pop(conv_key, None)
 
-    if pending:
-        if is_yes(text):
-            query_for_search = pending["query_for_search"]
-            original_user_message = pending.get("original_user_message", query_for_search)
-            clarified_for_user = pending.get("clarified_for_user", query_for_search)
-            pending_confirmations.pop(conversation_key, None)
 
-            route = route_query(query_for_search)
-            log.info(
-                "confirmation yes: route=%s query_for_search=%r",
-                route,
-                query_for_search[:200],
-            )
-            if route == "projects":
-                answer = rag_answer_with_retrieval(
-                    query_for_search,
-                    original_user_message,
-                    clarified_for_user,
-                )
-                return truncate_for_slack(answer)
-            return "Right now I can answer questions about projects."
+def clarify_and_set_pending(
+    conv_key: str,
+    channel_id: str,
+    route: str,
+    question_text: str,
+) -> tuple[list[dict] | None, str | None]:
+    """Run clarify LLM and store pending confirmation. Returns (confirm blocks, error_message)."""
+    q = question_text.strip()
+    if not q:
+        return None, "Please enter a question in the form."
 
-        if is_no(text):
-            pending_confirmations.pop(conversation_key, None)
-            log.info("confirmation no: cleared pending for %s", conversation_key)
-            return "Understood. Please ask your question again, and I will confirm my understanding first."
+    log.info("question (modal): key=%s route=%s preview=%r", conv_key, route, q[:120])
 
-        log.debug("pending but not yes/no: prompting again")
-        return "Please reply with one of: `yes` or `no`."
-
-    log.info("new question: calling clarify_query_with_llm")
-    clarification = clarify_query_with_llm(text)
-    pending_confirmations[conversation_key] = {
+    clarification = clarify_query_with_llm(q)
+    pending_confirmations[conv_key] = {
         **clarification,
-        "original_user_message": text,
+        "original_user_message": q,
+        "route_override": route,
+        "thread_root_ts": None,
+        "channel_id": channel_id,
     }
+    blocks = confirm_blocks(clarification["clarified_for_user"])
+    return blocks, None
+
+
+def execute_confirmed_search(conv_key: str) -> str:
+    pending = pending_confirmations.pop(conv_key, None)
+    if not pending:
+        return "That confirmation expired. Mention the bot to start again."
+
+    query_for_search = pending["query_for_search"]
+    original_user_message = pending.get("original_user_message", query_for_search)
+    clarified_for_user = pending.get("clarified_for_user", query_for_search)
+    forced = pending.get("route_override")
+    route = forced if forced else route_query(query_for_search)
+
     log.info(
-        "stored pending confirmation key=%s (await yes/no in this channel/DM)",
-        conversation_key,
+        "confirmation yes: route=%s (forced=%s) query_for_search=%r",
+        route,
+        forced,
+        query_for_search[:200],
     )
+
+    if route == "projects":
+        answer = rag_answer_with_retrieval(
+            query_for_search,
+            original_user_message,
+            clarified_for_user,
+        )
+        return truncate_for_slack(answer)
+
     return (
-        "Here is how I understood your question. Reply `yes` to continue, or `no` to rewrite it.\n\n"
-        f"- {clarification['clarified_for_user']}"
-    )
+        f"_RAG search is enabled for **project information** right now._\n"
+        f"You asked in the *{route}* category — try rephrasing as a project question, "
+        "or pick *Project information* from the menu."
+    ) #Do we want it to say RAG search? I can see why that is helpful for testing, but it doesn't really mean anything to users and just creates more clutter
+
+
+def cancel_confirmation(conv_key: str) -> tuple[str, list[dict] | None]:
+    pending = pending_confirmations.pop(conv_key, None)
+    if not pending:
+        log.info("confirmation no: key=%s (nothing pending)", conv_key)
+        return "Nothing to cancel here. Mention the bot to open the menu again.", None
+
+    route = str(pending.get("route_override", "projects"))
+    log.info("confirmation no: key=%s (rephrase button)", conv_key)
+    text = "Use the button below to open the question form again for the same topic."
+    return text, rephrase_question_blocks(route)
+
+
+def has_pending_confirmation(conv_key: str) -> bool:
+    return conv_key in pending_confirmations
+
+
+def pending_matches_message_channel_flow(
+    pending: dict,
+    channel_type: str,
+    thread_ts: str | None,
+) -> bool:
+    """True if this user message should pair with a main-channel pending confirmation."""
+    if pending.get("thread_root_ts") is not None:
+        return bool(thread_ts) and str(pending.get("thread_root_ts")) == str(thread_ts)
+    if channel_type == "im":
+        return True
+    return not thread_ts
