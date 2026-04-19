@@ -206,34 +206,29 @@ def build_question_modal_view(route: str, private_metadata: str) -> dict:
             "callback_id": QUESTION_MODAL_CALLBACK_ID,
             "private_metadata": private_metadata,
             "title": {"type": "plain_text", "text": "Ask PBS", "emoji": True},
-            "submit": {"type": "plain_text", "text": "Submit", "emoji": True},
-            "close": {"type": "plain_text", "text": "Cancel", "emoji": True},
+            "close": {"type": "plain_text", "text": "Exit", "emoji": True},
             "blocks": [
                 {
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
                         "text": "For contact information for a specific PBS staff member, please refer to the following:"
+                    },
                 },
-			"accessory": {
-				"type": "button",
-				"text": {
-					"type": "plain_text",
-					"text": "Click for Airtable Staff Interface",
-					"emoji": true
-				},
-				"value": "Click Me",
-				"url": "https://airtable.com/appw0xxA1o9OlFg8t/pagsHP5pHe8hR1p1U?jsZ6m=recoj8YTeLDgqblV0&6gFPw=recPPA9Zvc4cnLXlq",
-				"action_id": "button-action"
-			}
-		},
-		{
-			"type": "section",
-			"text": {
-				"type": "mrkdwn",
-				"text": "To ask a question about who is on the Staff for a Project, return to the Project Information Tab."
-			}
-		}
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "<https://airtable.com/appw0xxA1o9OlFg8t/pagsHP5pHe8hR1p1U?jsZ6m=recoj8YTeLDgqblV0&6gFPw=recPPA9Zvc4cnLXlq|Airtable Staff Interface>"
+                    }
+                },
+                		        {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "To ask a question about project Staff for a Project, return to the Project Information Tab."
+                    }
+		        }
             ]
         } 
     if(route == "contacts"):
@@ -242,36 +237,32 @@ def build_question_modal_view(route: str, private_metadata: str) -> dict:
             "callback_id": QUESTION_MODAL_CALLBACK_ID,
             "private_metadata": private_metadata,
             "title": {"type": "plain_text", "text": "Ask PBS", "emoji": True},
-            "submit": {"type": "plain_text", "text": "Submit", "emoji": True},
-            "close": {"type": "plain_text", "text": "Cancel", "emoji": True},
+            "close": {"type": "plain_text", "text": "Exit", "emoji": True},
             "blocks": [
                 {
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
                         "text": "For contact information for a specific PBS staff member, please refer to the following:"
+                    },
                 },
-			"accessory": {
-				"type": "button",
-				"text": {
-					"type": "plain_text",
-					"text": "Click for Airtable Contacts Interface",
-					"emoji": true
-				},
-				"value": "Click Me",
-				"url": "https://airtable.com/appw0xxA1o9OlFg8t/pagHqsYqqCAdA2oXi",
-				"action_id": "button-action"
-			}
-		},
-		{
-			"type": "section",
-			"text": {
-				"type": "mrkdwn",
-				"text": "To ask a question about project Contacts for a Project, return to the Project Information Tab."
-			}
-		}
-        ]
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "<https://airtable.com/appw0xxA1o9OlFg8t/pagHqsYqqCAdA2oXi|Airtable Contacts Interface>"
+                    }
+                },
+		        {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "To ask a question about project Contacts for a Project, return to the Project Information Tab."
+                    }
+		        }
+            ]
         }
+
 
     if(route == "information"):
         return{
