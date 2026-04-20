@@ -56,6 +56,33 @@ def _open_question_modal(client, trigger_id: str, channel_id: str, user_id: str,
     client.views_open(trigger_id=trigger_id, view=view)
 
 
+def _consume_confirmation_message(client, body: dict, confirmed: bool) -> None:
+    """Make confirm buttons one-time by replacing the original confirm message."""
+    channel = body.get("channel", {}).get("id")
+    container = body.get("container", {}) or {}
+    message = body.get("message", {}) or {}
+    message_ts = container.get("message_ts") or message.get("ts")
+    if not channel or not message_ts:
+        return
+
+    status = "✅ Confirmation received. Running search..." if confirmed else "✏️ Rephrase selected."
+    replacement_blocks = [
+        {
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": status},
+        }
+    ]
+    try:
+        client.chat_update(
+            channel=channel,
+            ts=message_ts,
+            text=status,
+            blocks=replacement_blocks,
+        )
+    except SlackApiError as e:
+        log.warning("chat_update confirm message failed: %s", e)
+
+
 def register(app: App) -> None:
     @app.action("pbs_intent")
     def on_intent(ack, body, client):
@@ -134,7 +161,7 @@ def register(app: App) -> None:
         except SlackApiError as e:
             log.warning("chat_postMessage confirm failed: %s", e)
 
-    def on_confirm(ack, body, say):
+    def on_confirm(ack, body, say, client):
         ack()
         user = body["user"]["id"]
         channel = body["channel"]["id"]
@@ -142,10 +169,12 @@ def register(app: App) -> None:
         value = body["actions"][0]["value"]
 
         if value == "yes":
+            _consume_confirmation_message(client, body, confirmed=True)
             out = execute_confirmed_search(conv_key)
             say(channel=channel, text=out)
             return
 
+        _consume_confirmation_message(client, body, confirmed=False)
         text, extra = cancel_confirmation(conv_key)
         if extra:
             say(channel=channel, text=text, blocks=extra)
