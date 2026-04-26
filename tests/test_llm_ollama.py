@@ -9,6 +9,20 @@ from pbsbot import state
 from pbsbot.llm import ollama
 
 
+class FakeResponse:
+    def __init__(self, payload: bytes) -> None:
+        self.payload = payload
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return self.payload
+
+
 class OllamaClientTests(TestCase):
     def setUp(self) -> None:
         self.original_settings = state.settings
@@ -121,3 +135,28 @@ class OllamaClientTests(TestCase):
 
             self.assertIsNone(ollama.generate("hello"))
 
+    def test_generate_returns_none_when_ollama_base_url_is_empty(self) -> None:
+        state.settings = SimpleNamespace(
+            ollama_base_url="",
+            ollama_model="llama3.1:8b",
+            ollama_timeout=5,
+        )
+
+        with patch("pbsbot.llm.ollama.urllib.request.urlopen") as urlopen:
+            self.assertIsNone(ollama.generate("hello"))
+
+        urlopen.assert_not_called()
+
+    def test_generate_returns_none_for_empty_model_response(self) -> None:
+        with patch(
+            "pbsbot.llm.ollama.urllib.request.urlopen",
+            return_value=FakeResponse(b'{"response": "   "}'),
+        ):
+            self.assertIsNone(ollama.generate("hello"))
+
+    def test_generate_returns_none_for_invalid_json_response(self) -> None:
+        with patch(
+            "pbsbot.llm.ollama.urllib.request.urlopen",
+            return_value=FakeResponse(b"not json"),
+        ):
+            self.assertIsNone(ollama.generate("hello"))

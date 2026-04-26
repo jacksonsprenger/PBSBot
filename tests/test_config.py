@@ -71,3 +71,15 @@ class ConfigTests(TestCase):
             ):
                 self.assertTrue(config.load_settings().chroma_filter_projects_only)
 
+    def test_filter_falsey_values_are_rejected(self) -> None:
+        for value in ("0", "false", "no", "anything-else"):
+            with self.subTest(value=value), patch.dict(
+                os.environ, {"CHROMA_FILTER_TO_PROJECTS_TABLE": value}, clear=True
+            ):
+                self.assertFalse(config.load_settings().chroma_filter_projects_only)
+
+    def test_invalid_numeric_env_values_fail_fast(self) -> None:
+        for key in ("OLLAMA_TIMEOUT", "CHROMA_N_RESULTS", "MAX_SLACK_CHARS"):
+            with self.subTest(key=key), patch.dict(os.environ, {key: "not-a-number"}, clear=True):
+                with self.assertRaises(ValueError):
+                    config.load_settings()

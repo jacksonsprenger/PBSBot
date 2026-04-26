@@ -50,6 +50,10 @@ class AirtableSyncTransformTests(TestCase):
         self.assertEqual(self.sync_mod.field_value_to_text(True), "True")
         self.assertEqual(self.sync_mod.field_value_to_text(42), "42")
 
+    def test_field_value_to_text_skips_dicts_without_supported_display_fields(self) -> None:
+        self.assertIsNone(self.sync_mod.field_value_to_text({"id": "usr123"}))
+        self.assertIsNone(self.sync_mod.field_value_to_text([{"email": "ignored@example.com"}]))
+
     def test_record_to_document_skips_empty_fields_and_preserves_labels(self) -> None:
         record = {
             "id": "rec123",
@@ -87,6 +91,18 @@ class AirtableSyncTransformTests(TestCase):
         self.assertEqual(
             self.sync_mod.chunk_text("abcdefghij", chunk_size_chars=4, overlap_chars=1),
             ["abcd", "defg", "ghij"],
+        )
+
+    def test_chunk_text_exact_chunk_size_returns_single_chunk(self) -> None:
+        self.assertEqual(
+            self.sync_mod.chunk_text("abcd", chunk_size_chars=4, overlap_chars=2),
+            ["abcd"],
+        )
+
+    def test_chunk_text_without_overlap_uses_adjacent_windows(self) -> None:
+        self.assertEqual(
+            self.sync_mod.chunk_text("abcdef", chunk_size_chars=3, overlap_chars=0),
+            ["abc", "def"],
         )
 
     def test_chunk_text_clamps_overlap_to_avoid_zero_step(self) -> None:
@@ -132,6 +148,43 @@ class AirtableSyncIntegrationShapeTests(TestCase):
         self.assertEqual(calls[0]["headers"], {"Authorization": "Bearer key123"})
         self.assertEqual(calls[0]["timeout"], 60)
         self.assertFalse(calls[0]["trust_env"])
+
+    def test_fetch_tables_metadata_returns_empty_list_when_response_has_no_tables_key(self) -> None:
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> dict:
+                return {}
+
+        class FakeSession:
+            def get(self, url, *, headers, timeout):
+                return FakeResponse()
+
+        with patch.object(self.sync_mod.requests, "Session", return_value=FakeSession()):
+            tables = self.sync_mod.fetch_tables_metadata("base123", api_key="key123")
+
+        self.assertEqual(tables, [])
+
+    def test_fetch_tables_pyairtable_handles_missing_table_name(self) -> None:
+        class FakeTable:
+            id = "tbl1"
+
+        class FakeBase:
+            def tables(self):
+                return [FakeTable()]
+
+        class FakeApi:
+            def __init__(self, api_key):
+                self.api_key = api_key
+
+            def base(self, base_id):
+                return FakeBase()
+
+        with patch.dict(sys.modules, {"pyairtable": types.SimpleNamespace(Api=FakeApi)}):
+            tables = self.sync_mod.fetch_tables_pyairtable("base123", api_key="key123")
+
+        self.assertEqual(tables, [{"id": "tbl1", "name": None}])
 
     def test_sync_upserts_deterministic_chunk_ids_and_metadata(self) -> None:
         upserts: list[dict] = []
@@ -258,3 +311,23 @@ class AirtableSyncIntegrationShapeTests(TestCase):
 
         self.assertEqual(result, 1)
 
+    def test_sync_returns_error_when_required_dependency_is_missing(self) -> None:
+        with patch.dict("os.environ", {"AIRTABLE_API_KEY": "key"}, clear=True), patch.dict(
+            sys.modules,
+            {
+                "pyairtable": None,
+                "chromadb": None,
+            },
+        ):
+            result = self.sync_mod.sync(
+                reset=False,
+                chroma_path="/tmp/chroma",
+                collection_name="pbs_projects",
+                base_id="base123",
+                table_id="tblProjects",
+                table_name="Projects",
+                chunk_size_chars=100,
+                chunk_overlap_chars=0,
+            )
+
+        self.assertEqual(result, 1)

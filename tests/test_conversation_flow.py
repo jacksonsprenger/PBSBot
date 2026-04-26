@@ -29,6 +29,12 @@ class ConversationFlowTests(TestCase):
             "What tasks are due?",
         )
 
+    def test_normalize_mention_text_returns_empty_for_only_mentions(self) -> None:
+        self.assertEqual(conversation.normalize_mention_text(" <@BOT123> <@U456> "), "")
+
+    def test_get_conversation_key_is_channel_user_scoped(self) -> None:
+        self.assertEqual(conversation.get_conversation_key("C123", "U456"), "C123:U456")
+
     def test_yes_and_no_detection_accepts_expected_variants(self) -> None:
         for text in ("yes", "Y", "yeah", "Yep", "correct"):
             with self.subTest(text=text):
@@ -47,6 +53,19 @@ class ConversationFlowTests(TestCase):
         out = conversation.truncate_for_slack(text)
 
         self.assertLessEqual(len(out), 80)
+        self.assertTrue(out.endswith("_(Message truncated.)_"))
+
+    def test_truncate_for_slack_leaves_exact_cap_unchanged(self) -> None:
+        text = "A" * 80
+
+        self.assertEqual(conversation.truncate_for_slack(text), text)
+
+    def test_truncate_for_slack_honors_explicit_cap(self) -> None:
+        text = "B" * 100
+
+        out = conversation.truncate_for_slack(text, max_chars=60)
+
+        self.assertLessEqual(len(out), 60)
         self.assertTrue(out.endswith("_(Message truncated.)_"))
 
     def test_new_question_stores_pending_confirmation(self) -> None:
@@ -94,3 +113,15 @@ class ConversationFlowTests(TestCase):
         self.assertIn("C1:U1", conversation.pending_confirmations)
         self.assertEqual(answer, "Please reply with one of: `yes` or `no`.")
 
+    def test_yes_reply_clears_pending_confirmation_after_search(self) -> None:
+        conversation.pending_confirmations["C1:U1"] = {
+            "query_for_search": "project status",
+            "clarified_for_user": "Project status",
+            "original_user_message": "What is the project status?",
+        }
+
+        with patch.object(conversation, "rag_answer_with_retrieval", return_value="answer"):
+            answer = conversation.handle_user_query_flow("U1", "C1", "yes")
+
+        self.assertEqual(answer, "answer")
+        self.assertNotIn("C1:U1", conversation.pending_confirmations)

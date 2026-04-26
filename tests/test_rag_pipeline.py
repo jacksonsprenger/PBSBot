@@ -45,6 +45,20 @@ class RagPipelineTests(TestCase):
         self.assertEqual(store.calls, [{"query": "project status", "n_results": None, "where": {"table_id": "tblProjects"}}])
         synth.assert_called_once_with("Project status?", "Project status", ["project chunk"])
 
+    def test_project_route_with_empty_table_id_uses_unfiltered_retrieval(self) -> None:
+        state.settings = SimpleNamespace(
+            chroma_filter_projects_only=True,
+            chroma_projects_table_id="",
+            chroma_n_results=5,
+        )
+        store = FakeStore([["project chunk"]])
+        state.chroma_store = store
+
+        with patch.object(pipeline, "synthesize_answer_with_llm", return_value="answer"):
+            pipeline.rag_answer_with_retrieval("project status", "Project status?", "Project status")
+
+        self.assertIsNone(store.calls[0]["where"])
+
     def test_project_route_can_disable_projects_filter(self) -> None:
         state.settings = SimpleNamespace(
             chroma_filter_projects_only=False,
@@ -81,6 +95,39 @@ class RagPipelineTests(TestCase):
         )
         synth.assert_called_once_with("What tasks are due?", "Tasks due this week", ["fallback chunk"])
 
+    def test_non_project_route_does_not_retry_when_filtered_search_has_results(self) -> None:
+        store = FakeStore([["contact chunk"]])
+        state.chroma_store = store
+
+        with patch.object(pipeline, "synthesize_answer_with_llm", return_value="answer"):
+            pipeline.rag_answer_with_retrieval(
+                "phone number",
+                "What is the phone number?",
+                "Phone number",
+                route="contacts",
+            )
+
+        self.assertEqual(
+            store.calls,
+            [{"query": "phone number", "n_results": None, "where": {"table_name": "Contacts"}}],
+        )
+
+    def test_project_route_does_not_retry_when_filtered_search_is_empty(self) -> None:
+        store = FakeStore([[]])
+        state.chroma_store = store
+
+        with patch.object(pipeline, "synthesize_answer_with_llm", return_value="no answer") as synth:
+            out = pipeline.rag_answer_with_retrieval(
+                "project status",
+                "Project status?",
+                "Project status",
+                route="projects",
+            )
+
+        self.assertEqual(out, "no answer")
+        self.assertEqual(len(store.calls), 1)
+        synth.assert_called_once_with("Project status?", "Project status", [])
+
     def test_unknown_route_uses_unfiltered_retrieval(self) -> None:
         store = FakeStore([["chunk"]])
         state.chroma_store = store
@@ -89,4 +136,3 @@ class RagPipelineTests(TestCase):
             pipeline.rag_answer_with_retrieval("anything", "Anything?", "Anything", route="unknown")
 
         self.assertIsNone(store.calls[0]["where"])
-

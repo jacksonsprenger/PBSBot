@@ -83,6 +83,23 @@ class SlackHandlerTests(TestCase):
         flow.assert_not_called()
         self.assertEqual(sent, [])
 
+    def test_unknown_channel_type_is_ignored(self) -> None:
+        sent: list[str] = []
+
+        with patch.object(self.handlers_mod, "handle_user_query_flow") as flow:
+            self.app.handlers["message"](
+                {
+                    "user": "U1",
+                    "channel": "C1",
+                    "text": "hello",
+                    "channel_type": "unknown",
+                },
+                sent.append,
+            )
+
+        flow.assert_not_called()
+        self.assertEqual(sent, [])
+
     def test_channel_message_without_pending_confirmation_is_ignored(self) -> None:
         sent: list[str] = []
 
@@ -142,3 +159,24 @@ class SlackHandlerTests(TestCase):
                 flow.assert_called_once_with("U1", "C1", text)
                 self.assertEqual(sent, [f"<@U1>\n{text} answer"])
 
+    def test_mpim_pending_confirmation_is_supported(self) -> None:
+        sent: list[str] = []
+        self.handlers_mod.pending_confirmations["G1:U1"] = {"query_for_search": "status"}
+
+        with patch.object(
+            self.handlers_mod,
+            "handle_user_query_flow",
+            return_value="mpim answer",
+        ) as flow:
+            self.app.handlers["message"](
+                {
+                    "user": "U1",
+                    "channel": "G1",
+                    "text": "yes",
+                    "channel_type": "mpim",
+                },
+                sent.append,
+            )
+
+        flow.assert_called_once_with("U1", "G1", "yes")
+        self.assertEqual(sent, ["<@U1>\nmpim answer"])
