@@ -64,14 +64,13 @@ def handle_user_query_flow(user: str, channel: str, text: str) -> str:
                 route,
                 query_for_search[:200],
             )
-            if route == "projects":
-                answer = rag_answer_with_retrieval(
-                    query_for_search,
-                    original_user_message,
-                    clarified_for_user,
-                )
-                return truncate_for_slack(answer)
-            return "Right now I can answer questions about projects."
+            answer = rag_answer_with_retrieval(
+                query_for_search,
+                original_user_message,
+                clarified_for_user,
+                route=route,
+            )
+            return truncate_for_slack(answer)
 
         if is_no(text):
             pending_confirmations.pop(conversation_key, None)

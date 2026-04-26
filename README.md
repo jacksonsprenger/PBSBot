@@ -39,6 +39,12 @@ Edit **`.env`**: `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, `AIRTABLE_*`, and Ollama 
 python -m pbsbot.ingestion.sync_airtable
 ```
 
+To answer across projects, tasks, contacts, and staff, index every Airtable table:
+
+```bash
+python -m pbsbot.ingestion.sync_airtable --reset --all-tables
+```
+
 **Start Ollama** on your machine if you use the default local LLM URL.
 
 **Start the bot:**
