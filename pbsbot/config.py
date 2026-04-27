@@ -26,6 +26,7 @@ class Settings:
     chroma_persist_dir: str
     chroma_projects_table_id: str
     chroma_filter_projects_only: bool
+    route_table_ids: dict[str, str]
     max_slack_chars: int
     log_level: str
 
@@ -36,6 +37,12 @@ def load_settings() -> Settings:
         "true",
         "yes",
     )
+
+    projects_table_id = os.getenv(
+        "AIRTABLE_PROJECTS_TABLE_ID",
+        os.getenv("AIRTABLE_TABLE_ID", "tblU9LfZeVNicdB5e"),
+    ).strip()
+
     return Settings(
         slack_bot_token=os.getenv("SLACK_BOT_TOKEN"),
         slack_app_token=os.getenv("SLACK_APP_TOKEN"),
@@ -44,8 +51,14 @@ def load_settings() -> Settings:
         ollama_timeout=int(os.getenv("OLLAMA_TIMEOUT", "120")),
         chroma_n_results=int(os.getenv("CHROMA_N_RESULTS", "5")),
         chroma_persist_dir=os.getenv("CHROMA_PERSIST_DIR", "./chroma_db"),
-        chroma_projects_table_id=os.getenv("AIRTABLE_TABLE_ID", "tblU9LfZeVNicdB5e").strip(),
+        chroma_projects_table_id=projects_table_id,
         chroma_filter_projects_only=filt,
+        route_table_ids={
+            "projects": projects_table_id,
+            "tasks": os.getenv("AIRTABLE_TASKS_TABLE_ID", "").strip(),
+            "staff": os.getenv("AIRTABLE_STAFF_TABLE_ID", "").strip(),
+            "contacts": os.getenv("AIRTABLE_CONTACTS_TABLE_ID", "").strip(),
+        },
         max_slack_chars=int(os.getenv("MAX_SLACK_CHARS", "3500")),
         log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
     )

@@ -40,7 +40,12 @@ def get_conversation_key(channel_id: str, user_id: str) -> str:
     return f"{channel_id}:{user_id}"
 
 
-def handle_user_query_flow(user: str, channel: str, text: str) -> str:
+def handle_user_query_flow(
+    user: str,
+    channel: str,
+    text: str,
+    selected_route: str | None = None,
+) -> str:
     conversation_key = get_conversation_key(channel, user)
     pending = pending_confirmations.get(conversation_key)
     log.info(
@@ -56,22 +61,22 @@ def handle_user_query_flow(user: str, channel: str, text: str) -> str:
             query_for_search = pending["query_for_search"]
             original_user_message = pending.get("original_user_message", query_for_search)
             clarified_for_user = pending.get("clarified_for_user", query_for_search)
+            route = pending.get("route") or route_query(query_for_search)
             pending_confirmations.pop(conversation_key, None)
 
-            route = route_query(query_for_search)
             log.info(
                 "confirmation yes: route=%s query_for_search=%r",
                 route,
                 query_for_search[:200],
             )
-            if route == "projects":
-                answer = rag_answer_with_retrieval(
-                    query_for_search,
-                    original_user_message,
-                    clarified_for_user,
-                )
-                return truncate_for_slack(answer)
-            return "Right now I can answer questions about projects."
+
+            answer = rag_answer_with_retrieval(
+                query_for_search,
+                original_user_message,
+                clarified_for_user,
+                route=route,
+            )
+            return truncate_for_slack(answer)
 
         if is_no(text):
             pending_confirmations.pop(conversation_key, None)
@@ -83,13 +88,18 @@ def handle_user_query_flow(user: str, channel: str, text: str) -> str:
 
     log.info("new question: calling clarify_query_with_llm")
     clarification = clarify_query_with_llm(text)
+    route = selected_route or route_query(text)
+
     pending_confirmations[conversation_key] = {
         **clarification,
         "original_user_message": text,
+        "route": route,
     }
+
     log.info(
-        "stored pending confirmation key=%s (await yes/no in this channel/DM)",
+        "stored pending confirmation key=%s route=%s (await yes/no in this channel/DM)",
         conversation_key,
+        route,
     )
     return (
         "Here is how I understood your question. Reply `yes` to continue, or `no` to rewrite it.\n\n"
