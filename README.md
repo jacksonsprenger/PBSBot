@@ -17,6 +17,8 @@ A Slack chatbot for PBS Wisconsin that connects to their Airtable project base. 
 
 Entry points: **`python -m pbsbot`** or **`python main.py`** (shim).
 
+## For Slack App setup steps, see `SETUP.md`
+
 ## How to run (in order)
 
 ### A. Local machine (venv)
@@ -127,3 +129,15 @@ python tools/llm_connect.py
 | `chromadb` | Vector store for RAG pipeline |
 | `requests` | HTTP client |
 | `paramiko` | SSH tunnel for remote LLM connection |
+
+## Next Steps
+
+With more time, our next step for this project would be expanding the UI and RAG-Pipeline to provide better responses for user questions.
+
+Currently, the UI prompts the user to select between 4 question categories: Project information, Staff & roles, Tasks & deadlines, Contacts & partners
+
+Once selected, every category except Project information, suggests the user ask the question in the Project information category. Part of this is due to complexities we encountered with nested data in Airtable, where the Staff, Contacts, and Tasks listed in a Project are currently returned as an identification code and not legible information. With our current caching scheme using ChromaDB, we weren't able to devise a more effective method to extract the nested data, which would be a good place for a future group to start with this project.
+
+Additionally, another area where more work needs to be done is putting stronger guardrails in place to ensure that data returned by the LLM is accurate to what is in Airtable. From our testing, most information appeared to be accurate or produce the fail statement we expected, but different phrasings of questions could produce different results. This would likely require tweaking the RAG-pipeline and caching schemes for ChromaDB to ensure that user intent is consistently interpreted into the correct API call to Airtable.
+
+A recommendation for future versions of this project would be to test the system with more Airtable data. One issue we ran into during our testing was that in the data we were given, entries had been removed or edited to protect privacy. This only became an issue when we were testing for data pulls for information that would typically be found in the Airtable database, but wasn't included in our version, such as asking who the director or producer was for certain projects. As a result, by having more incomplete data, we were limited in our ability to test the edge-cases of our implementation. 
