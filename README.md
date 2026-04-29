@@ -2,6 +2,14 @@
 
 A Slack chatbot for PBS Wisconsin that connects to their Airtable project base. The bot answers questions about projects, tasks, and video promotions using natural language queries over Airtable data.
 
+## Note on this branch
+
+This branch represents an incomplete feature, that during our last week of testing, we weren't able to completely debug and/or ensure stablility with the rest of the codebase.
+
+The changes intended for this branch are one of the areas that could be considered for Next Steps for this project. The changes made to the UI were intended to create distictions between the functionality of the following categories: Project information, Staff & roles, Tasks &  deadlines, Contacts & partners. Additionally, due to an issue with our caching of data from Airtable using ChromaDB, we weren't able to develop a system for handling data that was nested in Airtable projects, including linked information to employees, contacts, and tasks all connected to the project. 
+
+Additionally, another feature to consider would be creating a method to introduce users to how to use the tool, the basics of which are demostrated by the `More Information` button from this implementation.
+
 ## Layout (by feature)
 
 | Path | Responsibility |
