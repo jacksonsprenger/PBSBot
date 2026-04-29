@@ -412,11 +412,10 @@ class ChunkTextExtendedTests(TestCase):
     def setUpClass(cls) -> None:
         cls.sync_mod = load_sync_module()
 
-    def test_chunk_text_with_whitespace_only(self) -> None:
-        self.assertEqual(
-            self.sync_mod.chunk_text("   \n\t  ", chunk_size_chars=10, overlap_chars=2),
-            [],
-        )
+    def test_chunk_text_with_whitespace_only_returns_empty_string_chunk(self) -> None:
+        """Whitespace-only text is truthy, stripped to '', then returned as single short chunk."""
+        result = self.sync_mod.chunk_text("   \n\t  ", chunk_size_chars=10, overlap_chars=2)
+        self.assertEqual(result, [""])
 
     def test_chunk_text_preserves_content_across_chunks(self) -> None:
         text = "abcdefghijklmnopqrstuvwxyz"

@@ -6,26 +6,50 @@ import importlib
 import sys
 import types
 from unittest import TestCase
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 
-def _build_fake_modules():
-    """Return a dict of fake modules needed to import pbsbot.slack.app cleanly."""
+def _make_external_stubs() -> dict:
+    """Fake modules needed to import pbsbot.slack.app (and its transitive imports)."""
     fake_dotenv = types.SimpleNamespace(load_dotenv=MagicMock())
     fake_bolt = types.SimpleNamespace(App=MagicMock)
-    fake_socket = types.SimpleNamespace(SocketModeHandler=MagicMock())
+    fake_socket_mod = types.SimpleNamespace(SocketModeHandler=MagicMock())
+    fake_embedding_functions = types.SimpleNamespace(DefaultEmbeddingFunction=lambda: "embedder")
+    fake_utils = types.SimpleNamespace(embedding_functions=fake_embedding_functions)
+    fake_chromadb = types.SimpleNamespace(
+        PersistentClient=MagicMock,
+        errors=types.SimpleNamespace(InternalError=Exception),
+    )
     return {
         "dotenv": fake_dotenv,
         "slack_bolt": fake_bolt,
         "slack_bolt.adapter": types.SimpleNamespace(),
-        "slack_bolt.adapter.socket_mode": fake_socket,
+        "slack_bolt.adapter.socket_mode": fake_socket_mod,
+        "chromadb": fake_chromadb,
+        "chromadb.errors": fake_chromadb.errors,
+        "chromadb.utils": fake_utils,
+        "chromadb.utils.embedding_functions": fake_embedding_functions,
+        "certifi": types.SimpleNamespace(where=lambda: "/tmp/cert.pem"),
     }
+
+
+def load_app_module():
+    """Import pbsbot.slack.app with fake external dependencies."""
+    # Clear cached modules to get a clean import
+    for key in list(sys.modules):
+        if key.startswith("pbsbot.slack.app") or key.startswith("pbsbot.chroma"):
+            sys.modules.pop(key, None)
+
+    with patch.dict(sys.modules, _make_external_stubs()):
+        return importlib.import_module("pbsbot.slack.app")
 
 
 class SlackAppRunTests(TestCase):
     """Verify that run() wires settings, ChromaStore, state, handlers, and starts Socket Mode."""
 
     def test_run_initializes_all_components_in_order(self) -> None:
+        module = load_app_module()
+
         fake_settings = MagicMock(
             name="settings",
             log_level="INFO",
@@ -38,18 +62,17 @@ class SlackAppRunTests(TestCase):
         fake_app = MagicMock(name="app")
         fake_handler = MagicMock(name="handler")
 
-        with patch("pbsbot.slack.app.load_dotenv") as mock_dotenv, \
-             patch("pbsbot.slack.app.load_settings", return_value=fake_settings) as mock_load, \
-             patch("pbsbot.slack.app.configure_runtime") as mock_runtime, \
-             patch("pbsbot.slack.app.ChromaStore", return_value=fake_store) as mock_chroma, \
-             patch("pbsbot.slack.app.state") as mock_state, \
-             patch("pbsbot.slack.app.App", return_value=fake_app) as mock_app_cls, \
-             patch("pbsbot.slack.app.register") as mock_register, \
-             patch("pbsbot.slack.app.SocketModeHandler", return_value=fake_handler) as mock_handler_cls, \
+        with patch.object(module, "load_dotenv") as mock_dotenv, \
+             patch.object(module, "load_settings", return_value=fake_settings) as mock_load, \
+             patch.object(module, "configure_runtime") as mock_runtime, \
+             patch.object(module, "ChromaStore", return_value=fake_store) as mock_chroma, \
+             patch.object(module, "state") as mock_state, \
+             patch.object(module, "App", return_value=fake_app) as mock_app_cls, \
+             patch.object(module, "register") as mock_register, \
+             patch.object(module, "SocketModeHandler", return_value=fake_handler) as mock_handler_cls, \
              patch("builtins.print"):
 
-            from pbsbot.slack.app import run
-            run()
+            module.run()
 
         mock_dotenv.assert_called_once()
         mock_load.assert_called_once()

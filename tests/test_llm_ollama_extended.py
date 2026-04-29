@@ -100,15 +100,16 @@ class ExtractJsonObjectEdgeCases(TestCase):
     def test_extract_json_object_returns_none_for_none_input(self) -> None:
         self.assertIsNone(ollama._extract_json_object(None))
 
-    def test_extract_json_object_handles_json_array(self) -> None:
-        """Arrays are valid JSON but not dicts — regex won't match (no outer braces)."""
-        self.assertIsNone(ollama._extract_json_object("[1, 2, 3]"))
+    def test_extract_json_object_parses_json_array_via_json_loads(self) -> None:
+        """json.loads succeeds on arrays, so the function returns the list."""
+        result = ollama._extract_json_object("[1, 2, 3]")
+        self.assertEqual(result, [1, 2, 3])
 
-    def test_extract_json_object_picks_first_object_from_multiple(self) -> None:
+    def test_extract_json_object_returns_none_for_multiple_objects(self) -> None:
+        """Greedy regex captures first { to last }, which is invalid JSON."""
         text = 'First: {"a": 1} Second: {"b": 2}'
         result = ollama._extract_json_object(text)
-        # re.search finds the largest match from first { to last }
-        self.assertIsNotNone(result)
+        self.assertIsNone(result)
 
 
 class ClarifyQueryExtendedTests(TestCase):

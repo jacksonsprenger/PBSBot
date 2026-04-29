@@ -17,7 +17,7 @@ class FakeInternalError(Exception):
 class FakeCollection:
     def __init__(self, *, count_value=3, query_results=None, fail_first_query=False, count_raises=False) -> None:
         self.count_value = count_value
-        self.query_results = query_results or {"documents": [["chunk one", "chunk two"]]}
+        self.query_results = query_results if query_results is not None else {"documents": [["chunk one", "chunk two"]]}
         self.fail_first_query = fail_first_query
         self.count_raises = count_raises
         self.query_calls: list[dict] = []
