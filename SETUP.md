@@ -1,18 +1,21 @@
-# How to get your Slack tokens for PBS Bot
+# Setting Up a Slack App
 
-Your app needs two tokens. Get them from the Slack API dashboard for **PBS_BOT**.
+The basis for this project is having a functioning Slack App, using the Slack API. These instructions will walk users through setting up their own app.
 
----
-
-## 1. Open your app in Slack
+## 1. Create a new app in Slack
 
 1. Go to **https://api.slack.com/apps**
-2. Sign in if needed.
-3. Click your app **PBS_BOT** (the one you use in the "620 Capstone" workspace).
+2. Sign in to your Slack account
+3. You should see a screen labelled **Your Apps**
+4. Select **Create a New App**
+5. You will be prompted to select **From a manifest** or **From scratch**. For the sake of this project, simply select **From scratch**
+6. When prompted, add your **App Name** and the Workspace you would like to add it to, then select **Create App**
+
+This will create the basic structure of a Slack App
 
 ---
 
-## 2. Turn on Socket Mode (required)
+## 2. Turn on Socket Mode
 
 1. In the left sidebar, click **Socket Mode**.
 2. Turn **Enable Socket Mode** **On**.
@@ -20,7 +23,7 @@ Your app needs two tokens. Get them from the Slack API dashboard for **PBS_BOT**
 
 ---
 
-## 3. Get SLACK_APP_TOKEN (starts with `xapp-`)
+## 3. Get SLACK_APP_TOKEN (starts with `xapp-`) 
 
 1. In the left sidebar, click **Basic Information**.
 2. Scroll to **App-Level Tokens**.
@@ -28,8 +31,17 @@ Your app needs two tokens. Get them from the Slack API dashboard for **PBS_BOT**
 4. Name it (e.g. `socket-mode`).
 5. Add scope: **`connections:write`**.
 6. Click **Generate**.
-7. **Copy the token** (it starts with `xapp-`). You won’t see it again.
+7. **Copy the token** (it starts with `xapp-`).
 8. In your project, open **`.env`** and replace `replace-with-your-app-token` with this value (no quotes):
+
+
+**To access your token after the intial stage, do the following:**
+
+1. Go to the **Basic Information** tab
+2. Scroll to **App-Level Tokens**.
+3. You should see a list of **Tokens**, click on the token you created previouisly
+4. A modal will pop up with the token name, who generated, what date is was generated, the scope of the token, and finally the respective `xapp-` token
+5. Copy the token
 
    ```
    SLACK_APP_TOKEN=xapp-1-...
@@ -47,6 +59,9 @@ Your app needs two tokens. Get them from the Slack API dashboard for **PBS_BOT**
    ```
    SLACK_BOT_TOKEN=xoxb-...
    ```
+---
+
+*Note: Tokens are intended to be protected, do not make them publicly accessible*
 
 ---
 
@@ -86,3 +101,17 @@ or
 ```
 
 You should see **🤖 PBS Bot is running!** and the bot will reply in Slack when you DM it or mention it.
+
+## 7. Updating the App Later On
+
+If you ever change any permissions, update tokens, switch modes, or any other change within the Slack App API, follow these steps:
+
+1. Navigate to the **Install App** tab using the lefthand navigation
+2. Select **Reinstall to [workspace name]**
+3. You will be led to a secondary screen, which will ask you to confirm the Workspace you would like the App updated to and the permissions. Select **Allow**
+
+This step only needs to be repeated if there are changes made to the structure of the App, it doesn't need to be updated when there are changes made to the code.
+
+
+
+
