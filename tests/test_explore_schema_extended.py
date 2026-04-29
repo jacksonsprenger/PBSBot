@@ -1,5 +1,4 @@
-"""Extended tests for pbsbot.ingestion.explore_schema — main() error paths and format_value edges."""
-
+# explore_schema: main() error paths, format_value edge cases
 from __future__ import annotations
 
 import importlib
@@ -95,7 +94,6 @@ class FormatValueExtendedTests(TestCase):
     def test_format_value_with_list_of_dicts_without_name_or_filename(self) -> None:
         value = [{"id": "a"}, {"id": "b"}]
         result = self.module.format_value(value)
-        # Falls through to str(item) for each dict
         self.assertIsInstance(result, str)
 
     def test_format_value_with_single_item_list(self) -> None:
@@ -103,7 +101,6 @@ class FormatValueExtendedTests(TestCase):
         self.assertEqual(self.module.format_value(value), "Producer")
 
     def test_format_value_with_exactly_four_list_items(self) -> None:
-        """Four items should not trigger the '+N more' suffix."""
         value = [{"name": "A"}, {"name": "B"}, {"name": "C"}, {"name": "D"}]
         result = self.module.format_value(value)
         self.assertNotIn("more", result)

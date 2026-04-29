@@ -1,6 +1,6 @@
 # PBSBot
 
-A Slack chatbot for PBS Wisconsin that connects to their Airtable project base. The bot answers questions about projects, tasks, and video promotions using natural language queries over Airtable data.
+A Slack chatbot for PBS Wisconsin that connects to their Airtable project base. The bot answers questions about projects, tasks, staff, contacts, and video promotions using natural language queries over Airtable data.
 
 ## Layout (by feature)
 
@@ -17,6 +17,8 @@ A Slack chatbot for PBS Wisconsin that connects to their Airtable project base. 
 
 Entry points: **`python -m pbsbot`** or **`python main.py`** (shim).
 
+## For Slack App setup steps, see `SETUP.md`
+
 ## How to run (in order)
 
 ### A. Local machine (venv)
@@ -31,12 +33,29 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Edit **`.env`**: `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, `AIRTABLE_*`, and Ollama vars if needed. Slack setup: **SETUP.md**. Airtable token: [airtable.com/create/tokens](https://airtable.com/create/tokens) (`data.records:read`, `schema.bases:read`).
+Edit **`.env`**: `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, `AIRTABLE_API_KEY`, `AIRTABLE_BASE_ID`, the route-specific Airtable table IDs, and Ollama vars if needed.
+
+Required Airtable table IDs:
+
+```env
+AIRTABLE_PROJECTS_TABLE_ID=tbl...
+AIRTABLE_TASKS_TABLE_ID=tbl...
+AIRTABLE_STAFF_TABLE_ID=tbl...
+AIRTABLE_CONTACTS_TABLE_ID=tbl...
+```
+
+Slack setup: **SETUP.md**. Airtable token: [airtable.com/create/tokens](https://airtable.com/create/tokens) (`data.records:read`, `schema.bases:read`).
 
 **Index Airtable → Chroma** (needed before RAG returns real data):
 
 ```bash
-python -m pbsbot.ingestion.sync_airtable
+python -m pbsbot.ingestion.sync_airtable --reset --all-tables
+```
+
+For later updates without clearing the collection:
+
+```bash
+python -m pbsbot.ingestion.sync_airtable --all-tables
 ```
 
 To answer across projects, tasks, contacts, and staff, index every Airtable table:
@@ -70,7 +89,7 @@ cd PBSBot
 cp .env.example .env
 # Edit .env (Slack, Airtable, Ollama as needed)
 docker compose up -d --build
-docker compose run --rm pbsbot python -m pbsbot.ingestion.sync_airtable
+docker compose run --rm pbsbot python -m pbsbot.ingestion.sync_airtable --reset --all-tables
 docker compose logs -f pbsbot
 ```
 
@@ -92,7 +111,7 @@ docker login
 cd /path/to/pbsbot
 docker compose -f docker-compose.hub.yml pull
 docker compose -f docker-compose.hub.yml up -d
-docker compose -f docker-compose.hub.yml run --rm pbsbot python -m pbsbot.ingestion.sync_airtable
+docker compose -f docker-compose.hub.yml run --rm pbsbot python -m pbsbot.ingestion.sync_airtable --reset --all-tables
 docker compose -f docker-compose.hub.yml logs -f pbsbot
 ```
 
@@ -111,11 +130,13 @@ The **`tools/llm_connect.py`** script connects to a remote LLM over SSH tunnel f
 ### Configure and run
 
 Open `tools/llm_connect.py` and update the config block:
-```
+
+```bash
 ssh capstone@144.92.195.30
 ```
 
 Then run:
+
 ```bash
 python tools/llm_connect.py
 ```
@@ -133,3 +154,13 @@ python tools/llm_connect.py
 | `chromadb` | Vector store for RAG pipeline |
 | `requests` | HTTP client |
 | `paramiko` | SSH tunnel for remote LLM connection |
+
+## Next Steps
+
+With more time, our next step for this project would be improving the RAG pipeline and response quality for the four supported question categories: project information, staff and roles, tasks and deadlines, and contacts and partners.
+
+The current system uses route-based retrieval to select the relevant Airtable table before querying ChromaDB. This improves over a single-table retrieval flow, but there is still room to improve how nested Airtable data is represented. Some linked records can still appear as record IDs instead of fully readable names or details, especially when information is stored across related tables. A future version could expand the ingestion step to resolve linked records before indexing them.
+
+Another area for future work is stronger guardrails to ensure that data returned by the LLM is accurate to what is in Airtable. From our testing, most information appeared to be accurate or produced the expected fail statement, but different phrasings of questions could still produce different results. This would likely require improving the retrieval logic, prompt structure, and ChromaDB indexing strategy so user intent is consistently interpreted into the correct route and table lookup.
+
+A recommendation for future versions of this project would be to test the system with more Airtable data. One issue we ran into during our testing was that some entries had been removed or edited to protect privacy. This limited our ability to test edge cases, such as asking who the director or producer was for certain projects when that information was not included in our version of the database.

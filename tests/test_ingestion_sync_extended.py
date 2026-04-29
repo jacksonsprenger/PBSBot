@@ -1,5 +1,4 @@
-"""Extended tests for pbsbot.ingestion.sync_airtable — main() CLI, batching, no-reset."""
-
+# sync_airtable: CLI args, batching, empty records, chunk_text edges
 from __future__ import annotations
 
 import importlib
@@ -63,7 +62,7 @@ class SyncMainCliTests(TestCase):
             {
                 "AIRTABLE_API_KEY": "key",
                 "AIRTABLE_BASE_ID": "base123",
-                "AIRTABLE_TABLE_ID": "tblCustom",
+                "AIRTABLE_PROJECTS_TABLE_ID": "tblCustom",
                 "CHROMA_PERSIST_DIR": "/tmp/chroma",
             },
             clear=True,
@@ -357,7 +356,6 @@ class SyncFunctionExtendedTests(TestCase):
             )
 
         self.assertEqual(result, 0)
-        # Only rec3 should produce a chunk
         self.assertEqual(len(upserts), 1)
         self.assertEqual(upserts[0]["ids"], ["tblX:rec3:0"])
 
@@ -368,7 +366,6 @@ class FieldValueToTextExtendedTests(TestCase):
         cls.sync_mod = load_sync_module()
 
     def test_field_value_to_text_with_list_of_plain_dicts_without_name(self) -> None:
-        """Dict items without 'name' key are skipped; only str items appear."""
         result = self.sync_mod.field_value_to_text([{"id": "123"}, "visible"])
         self.assertEqual(result, "visible")
 
@@ -413,7 +410,6 @@ class ChunkTextExtendedTests(TestCase):
         cls.sync_mod = load_sync_module()
 
     def test_chunk_text_with_whitespace_only_returns_empty_string_chunk(self) -> None:
-        """Whitespace-only text is truthy, stripped to '', then returned as single short chunk."""
         result = self.sync_mod.chunk_text("   \n\t  ", chunk_size_chars=10, overlap_chars=2)
         self.assertEqual(result, [""])
 
@@ -421,7 +417,6 @@ class ChunkTextExtendedTests(TestCase):
         text = "abcdefghijklmnopqrstuvwxyz"
         chunks = self.sync_mod.chunk_text(text, chunk_size_chars=10, overlap_chars=3)
 
-        # Every character in the original should appear in at least one chunk
         reconstructed = set()
         for chunk in chunks:
             for ch in chunk:

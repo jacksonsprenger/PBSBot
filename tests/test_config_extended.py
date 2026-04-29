@@ -1,5 +1,4 @@
-"""Extended tests for pbsbot.config — _resolve_ollama_base_url edge cases."""
-
+# _resolve_ollama_base_url: trailing slash, whitespace, docker detection
 from __future__ import annotations
 
 import os

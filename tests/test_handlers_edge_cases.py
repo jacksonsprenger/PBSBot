@@ -1,5 +1,4 @@
-"""Edge-case tests for pbsbot.slack.handlers beyond the happy paths."""
-
+# Slack handlers: edge cases (None text, missing channel, group/mpim types, etc.)
 from __future__ import annotations
 
 import importlib
@@ -37,7 +36,6 @@ class HandlersEdgeCaseTests(TestCase):
     def tearDown(self) -> None:
         self.handlers_mod.pending_confirmations.clear()
 
-    # ── app_mention edge cases ───────────────────────────────────────
 
     def test_app_mention_with_none_text_does_not_crash(self) -> None:
         sent: list[str] = []
@@ -70,7 +68,6 @@ class HandlersEdgeCaseTests(TestCase):
         flow.assert_called_once_with("U1", None, "hello")
         self.assertEqual(sent, ["<@U1>\nanswer"])
 
-    # ── message handler: channel_type="group" ────────────────────────
 
     def test_group_channel_type_with_pending_yes_runs_flow(self) -> None:
         sent: list[str] = []
@@ -94,7 +91,6 @@ class HandlersEdgeCaseTests(TestCase):
         flow.assert_called_once_with("U1", "G1", "yes")
         self.assertEqual(sent, ["<@U1>\ngroup answer"])
 
-    # ── message handler: channel_type="" (empty string) ──────────────
 
     def test_empty_string_channel_type_with_pending_runs_flow(self) -> None:
         sent: list[str] = []
@@ -135,7 +131,6 @@ class HandlersEdgeCaseTests(TestCase):
         flow.assert_not_called()
         self.assertEqual(sent, [])
 
-    # ── message handler: missing optional fields ─────────────────────
 
     def test_message_with_none_text_in_dm_does_not_crash(self) -> None:
         sent: list[str] = []
@@ -159,7 +154,6 @@ class HandlersEdgeCaseTests(TestCase):
         self.assertEqual(sent, ["<@U1>\nanswer"])
 
     def test_message_with_missing_channel_type_key(self) -> None:
-        """When channel_type key is absent, message.get returns '' which is in the tuple."""
         sent: list[str] = []
         self.handlers_mod.pending_confirmations["C1:U1"] = {"query_for_search": "q"}
 
@@ -175,10 +169,8 @@ class HandlersEdgeCaseTests(TestCase):
 
         flow.assert_called_once_with("U1", "C1", "yes")
 
-    # ── message handler: bot_id present but falsy ────────────────────
 
     def test_message_with_empty_bot_id_is_not_ignored(self) -> None:
-        """An empty-string bot_id is falsy, so the message should not be ignored."""
         sent: list[str] = []
 
         with patch.object(

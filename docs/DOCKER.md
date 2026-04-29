@@ -16,7 +16,15 @@ Then on the VM: `docker compose -f docker-compose.hub.yml pull && docker compose
 
 ```bash
 cp .env.example .env
-# Edit .env: SLACK_BOT_TOKEN, SLACK_APP_TOKEN, AIRTABLE_* (for sync)
+# Edit .env:
+# - SLACK_BOT_TOKEN
+# - SLACK_APP_TOKEN
+# - AIRTABLE_API_KEY
+# - AIRTABLE_BASE_ID
+# - AIRTABLE_PROJECTS_TABLE_ID
+# - AIRTABLE_TASKS_TABLE_ID
+# - AIRTABLE_STAFF_TABLE_ID
+# - AIRTABLE_CONTACTS_TABLE_ID
 
 docker compose up -d --build
 docker compose logs -f pbsbot
@@ -31,10 +39,16 @@ docker compose -f docker-compose.hub.yml up -d
 
 ## Chroma index (first deploy or after Airtable changes)
 
+For route-based retrieval, index all Airtable tables into Chroma:
+
 ```bash
-docker compose run --rm pbsbot python -m pbsbot.ingestion.sync_airtable
-# Full rebuild:
-docker compose run --rm pbsbot python -m pbsbot.ingestion.sync_airtable --reset
+docker compose run --rm pbsbot python -m pbsbot.ingestion.sync_airtable --reset --all-tables
+```
+
+For later updates without clearing the collection:
+
+```bash
+docker compose run --rm pbsbot python -m pbsbot.ingestion.sync_airtable --all-tables
 ```
 
 While the bot is running, sync updates the same volume; the bot reopens Chroma once if a query hits a stale index. You can still `docker compose restart pbsbot` after a large `--reset` sync if anything looks off.
@@ -59,7 +73,7 @@ Then `ollama serve` (or restart the service) so it accepts traffic from the Dock
 ## Cron sync (host)
 
 ```cron
-0 6 * * * cd /path/to/PBSBot && docker compose run --rm pbsbot python -m pbsbot.ingestion.sync_airtable >> /var/log/pbsbot-sync.log 2>&1
+0 6 * * * cd /path/to/PBSBot && docker compose run --rm pbsbot python -m pbsbot.ingestion.sync_airtable --all-tables >> /var/log/pbsbot-sync.log 2>&1
 ```
 
 ## Troubleshooting
@@ -67,7 +81,7 @@ Then `ollama serve` (or restart the service) so it accepts traffic from the Dock
 | Issue | Check |
 |--------|--------|
 | Bot not connecting | Tokens, outbound internet, `docker compose logs pbsbot` |
-| Empty RAG | Run sync; logs may warn that the collection is empty |
+| Empty RAG | Run sync with `--all-tables`; logs may warn that the collection is empty |
 | LLM errors | `OLLAMA_BASE_URL` reachable from the container; model pulled on Ollama host |
 | `exec format error` | Image is wrong CPU arch; build/push `linux/amd64` (see above) |
 

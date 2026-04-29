@@ -1,5 +1,4 @@
-"""Extended tests for pbsbot.rag.pipeline — auto-routing, keyword coverage, filter combos."""
-
+# RAG pipeline: auto-routing, case insensitivity, filter combos, retry logic
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -47,11 +46,9 @@ class RouteQueryExtendedTests(TestCase):
         self.assertEqual(pipeline.route_query("show details"), "projects")
 
     def test_route_query_prefers_task_when_multiple_keywords_present(self) -> None:
-        """'task' is checked first, so it takes priority."""
         self.assertEqual(pipeline.route_query("task email from staff"), "tasks")
 
     def test_route_query_contact_over_staff_when_both_present(self) -> None:
-        """'contact' is checked before 'staff'."""
         self.assertEqual(pipeline.route_query("contact info for staff member"), "contacts")
 
 
@@ -60,7 +57,7 @@ class RetrievalFilterExtendedTests(TestCase):
         self.original_settings = state.settings
         state.settings = SimpleNamespace(
             chroma_filter_projects_only=True,
-            chroma_projects_table_id="tblProjects",
+            route_table_ids={"projects": "tblProjects", "tasks": "", "staff": "", "contacts": ""},
             chroma_n_results=5,
         )
 
@@ -73,7 +70,7 @@ class RetrievalFilterExtendedTests(TestCase):
     def test_retrieval_filter_for_projects_disabled_and_empty_id(self) -> None:
         state.settings = SimpleNamespace(
             chroma_filter_projects_only=False,
-            chroma_projects_table_id="",
+            route_table_ids={"projects": "", "tasks": "", "staff": "", "contacts": ""},
             chroma_n_results=5,
         )
 
@@ -82,7 +79,7 @@ class RetrievalFilterExtendedTests(TestCase):
     def test_retrieval_filter_for_projects_enabled_but_empty_id(self) -> None:
         state.settings = SimpleNamespace(
             chroma_filter_projects_only=True,
-            chroma_projects_table_id="",
+            route_table_ids={"projects": "", "tasks": "", "staff": "", "contacts": ""},
             chroma_n_results=5,
         )
 
@@ -95,7 +92,7 @@ class RagAnswerAutoRoutingTests(TestCase):
         self.original_store = state.chroma_store
         state.settings = SimpleNamespace(
             chroma_filter_projects_only=True,
-            chroma_projects_table_id="tblProjects",
+            route_table_ids={"projects": "tblProjects", "tasks": "", "staff": "", "contacts": ""},
             chroma_n_results=5,
         )
 

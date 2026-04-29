@@ -19,12 +19,16 @@ ROUTE_TABLE_NAMES = {
 
 def route_query(query: str) -> str:
     q = query.lower()
-    if "task" in q:
+
+    if any(word in q for word in ("task", "deadline", "due", "milestone")):
         return "tasks"
-    if "contact" in q or "email" in q or "phone" in q:
+
+    if any(word in q for word in ("contact", "email", "phone", "partner")):
         return "contacts"
-    if "staff" in q or "who is" in q:
+
+    if any(word in q for word in ("staff", "role", "who is", "team", "department")):
         return "staff"
+
     return "projects"
 
 
@@ -33,12 +37,13 @@ def retrieval_filter_for_route(route: str) -> dict | None:
     assert s is not None
 
     if route == "projects":
-        if s.chroma_filter_projects_only and s.chroma_projects_table_id:
+        projects_id = s.route_table_ids.get("projects", "")
+        if s.chroma_filter_projects_only and projects_id:
             log.info(
                 "retrieve_chunks: scoping to Projects table_id=%s",
-                s.chroma_projects_table_id,
+                projects_id,
             )
-            return {"table_id": s.chroma_projects_table_id}
+            return {"table_id": projects_id}
         return None
 
     table_name = ROUTE_TABLE_NAMES.get(route)

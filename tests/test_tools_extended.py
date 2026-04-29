@@ -1,5 +1,4 @@
-"""Extended tests for tools/ — verify_chroma_tables edge cases and llm_connect units."""
-
+# verify_chroma_tables: metadata edge cases; llm_connect: tunnel + prompt helpers
 from __future__ import annotations
 
 import importlib

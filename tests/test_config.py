@@ -21,8 +21,8 @@ class ConfigTests(TestCase):
         self.assertEqual(settings.ollama_timeout, 120)
         self.assertEqual(settings.chroma_n_results, 5)
         self.assertEqual(settings.chroma_persist_dir, "./chroma_db")
-        self.assertEqual(settings.chroma_projects_table_id, "tblU9LfZeVNicdB5e")
-        self.assertTrue(settings.chroma_filter_projects_only)
+        self.assertFalse(settings.chroma_filter_projects_only)
+        self.assertEqual(settings.route_table_ids, {"projects": "", "tasks": "", "staff": "", "contacts": ""})
         self.assertEqual(settings.max_slack_chars, 3500)
         self.assertEqual(settings.log_level, "INFO")
 
@@ -43,7 +43,10 @@ class ConfigTests(TestCase):
             "OLLAMA_TIMEOUT": "30",
             "CHROMA_N_RESULTS": "9",
             "CHROMA_PERSIST_DIR": "/tmp/chroma",
-            "AIRTABLE_TABLE_ID": " tblProjects ",
+            "AIRTABLE_PROJECTS_TABLE_ID": " tblProjects ",
+            "AIRTABLE_TASKS_TABLE_ID": "tblTasks",
+            "AIRTABLE_STAFF_TABLE_ID": "tblStaff",
+            "AIRTABLE_CONTACTS_TABLE_ID": "tblContacts",
             "CHROMA_FILTER_TO_PROJECTS_TABLE": "no",
             "MAX_SLACK_CHARS": "500",
             "LOG_LEVEL": "debug",
@@ -59,8 +62,8 @@ class ConfigTests(TestCase):
         self.assertEqual(settings.ollama_timeout, 30)
         self.assertEqual(settings.chroma_n_results, 9)
         self.assertEqual(settings.chroma_persist_dir, "/tmp/chroma")
-        self.assertEqual(settings.chroma_projects_table_id, "tblProjects")
         self.assertFalse(settings.chroma_filter_projects_only)
+        self.assertEqual(settings.route_table_ids, {"projects": "tblProjects", "tasks": "tblTasks", "staff": "tblStaff", "contacts": "tblContacts"})
         self.assertEqual(settings.max_slack_chars, 500)
         self.assertEqual(settings.log_level, "DEBUG")
 

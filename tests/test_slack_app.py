@@ -1,5 +1,4 @@
-"""Tests for pbsbot.slack.app — the run() startup wiring."""
-
+# slack.app.run() wiring: dotenv, settings, chroma, state, bolt, socket mode
 from __future__ import annotations
 
 import importlib
@@ -10,7 +9,6 @@ from unittest.mock import MagicMock, patch
 
 
 def _make_external_stubs() -> dict:
-    """Fake modules needed to import pbsbot.slack.app (and its transitive imports)."""
     fake_dotenv = types.SimpleNamespace(load_dotenv=MagicMock())
     fake_bolt = types.SimpleNamespace(App=MagicMock)
     fake_socket_mod = types.SimpleNamespace(SocketModeHandler=MagicMock())
@@ -34,7 +32,6 @@ def _make_external_stubs() -> dict:
 
 
 def load_app_module():
-    """Import pbsbot.slack.app with fake external dependencies."""
     # Clear cached modules to get a clean import
     for key in list(sys.modules):
         if key.startswith("pbsbot.slack.app") or key.startswith("pbsbot.chroma"):
@@ -45,7 +42,6 @@ def load_app_module():
 
 
 class SlackAppRunTests(TestCase):
-    """Verify that run() wires settings, ChromaStore, state, handlers, and starts Socket Mode."""
 
     def test_run_initializes_all_components_in_order(self) -> None:
         module = load_app_module()

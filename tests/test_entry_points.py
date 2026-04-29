@@ -1,5 +1,4 @@
-"""Tests for entry points: main.py and pbsbot/__main__.py."""
-
+# main.py and __main__.py both import run from pbsbot.slack.app
 from __future__ import annotations
 
 import importlib
@@ -10,7 +9,6 @@ from unittest.mock import MagicMock, patch
 
 
 def _make_external_stubs() -> dict:
-    """Fake modules for importing app.py and its transitive dependencies."""
     fake_dotenv = types.SimpleNamespace(load_dotenv=MagicMock())
     fake_bolt = types.SimpleNamespace(App=MagicMock)
     fake_socket_mod = types.SimpleNamespace(SocketModeHandler=MagicMock())

@@ -1,5 +1,4 @@
-"""Extended tests for pbsbot.chroma.store — init edge cases and failure modes."""
-
+# ChromaStore: empty collection init, count errors, reconnect, query failures
 from __future__ import annotations
 
 import importlib
@@ -124,7 +123,6 @@ class ChromaStoreRetrieveEdgeCases(TestCase):
         self.assertEqual(collection.query_calls[0]["n_results"], 3)
 
     def test_retrieve_chunks_raises_on_second_internal_error(self) -> None:
-        """When reconnect also fails, the second InternalError should propagate."""
 
         class AlwaysFailCollection(FakeCollection):
             def query(self, **kwargs):

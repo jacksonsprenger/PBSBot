@@ -12,7 +12,7 @@ This script:
 
 Environment:
   AIRTABLE_API_KEY, AIRTABLE_BASE_ID
-  AIRTABLE_TABLE_ID  (defaults to Projects table id used by the team)
+  AIRTABLE_PROJECTS_TABLE_ID  (defaults to Projects table id used by the team)
   CHROMA_PERSIST_DIR (default ./chroma_db)
   CHROMA_COLLECTION_NAME (default pbs_projects — must match main.py)
 
@@ -318,7 +318,7 @@ def main() -> int:
     args = parser.parse_args()
 
     base_id = os.getenv("AIRTABLE_BASE_ID") or ""
-    table_id = os.getenv("AIRTABLE_TABLE_ID", DEFAULT_TABLE_ID)
+    table_id = os.getenv("AIRTABLE_PROJECTS_TABLE_ID", DEFAULT_TABLE_ID).strip() or DEFAULT_TABLE_ID
     chroma_path = os.getenv("CHROMA_PERSIST_DIR", DEFAULT_CHROMA_PATH)
     collection_name = os.getenv("CHROMA_COLLECTION_NAME", DEFAULT_COLLECTION)
 

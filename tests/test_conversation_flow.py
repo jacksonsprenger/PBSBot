@@ -83,13 +83,11 @@ class ConversationFlowTests(TestCase):
 
         clarify.assert_called_once_with("status?")
         self.assertIn("Reply `yes` to continue", answer)
-        self.assertEqual(
-            conversation.pending_confirmations["D1:U1"],
-            {
-                **clarification,
-                "original_user_message": "status?",
-            },
-        )
+        pending = conversation.pending_confirmations["D1:U1"]
+        self.assertEqual(pending["clarified_for_user"], "You want project status.")
+        self.assertEqual(pending["query_for_search"], "project status")
+        self.assertEqual(pending["original_user_message"], "status?")
+        self.assertEqual(pending["route"], "projects")
 
     def test_no_reply_clears_pending_confirmation(self) -> None:
         conversation.pending_confirmations["C1:U1"] = {

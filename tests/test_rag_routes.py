@@ -15,7 +15,7 @@ class RagRouteTests(TestCase):
         self.original_store = state.chroma_store
         state.settings = SimpleNamespace(
             chroma_filter_projects_only=True,
-            chroma_projects_table_id="tblProjects",
+            route_table_ids={"projects": "tblProjects", "tasks": "", "staff": "", "contacts": ""},
             max_slack_chars=3500,
         )
         conversation.pending_confirmations.clear()

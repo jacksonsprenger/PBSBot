@@ -1,5 +1,4 @@
-"""Extended tests for pbsbot.llm.ollama — happy paths and additional edge cases."""
-
+# Ollama client: generate() happy path, JSON extraction edges, prompt content checks
 from __future__ import annotations
 
 import json
@@ -101,12 +100,10 @@ class ExtractJsonObjectEdgeCases(TestCase):
         self.assertIsNone(ollama._extract_json_object(None))
 
     def test_extract_json_object_parses_json_array_via_json_loads(self) -> None:
-        """json.loads succeeds on arrays, so the function returns the list."""
         result = ollama._extract_json_object("[1, 2, 3]")
         self.assertEqual(result, [1, 2, 3])
 
     def test_extract_json_object_returns_none_for_multiple_objects(self) -> None:
-        """Greedy regex captures first { to last }, which is invalid JSON."""
         text = 'First: {"a": 1} Second: {"b": 2}'
         result = ollama._extract_json_object(text)
         self.assertIsNone(result)

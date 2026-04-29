@@ -1,5 +1,4 @@
-"""Edge-case tests for pbsbot.slack.conversation beyond the happy paths."""
-
+# Conversation flow edge cases: empty input, whitespace, missing pending keys
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -23,7 +22,6 @@ class ConversationEdgeCaseTests(TestCase):
         state.chroma_store = self.original_store
         conversation.pending_confirmations.clear()
 
-    # ── normalize_mention_text edge cases ────────────────────────────
 
     def test_normalize_mention_text_with_empty_string(self) -> None:
         self.assertEqual(conversation.normalize_mention_text(""), "")
@@ -37,7 +35,6 @@ class ConversationEdgeCaseTests(TestCase):
     def test_normalize_mention_text_with_only_whitespace(self) -> None:
         self.assertEqual(conversation.normalize_mention_text("   "), "")
 
-    # ── is_yes / is_no with whitespace ───────────────────────────────
 
     def test_is_yes_strips_surrounding_whitespace(self) -> None:
         self.assertTrue(conversation.is_yes("  yes  "))
@@ -55,7 +52,6 @@ class ConversationEdgeCaseTests(TestCase):
         self.assertFalse(conversation.is_no("no way"))
         self.assertFalse(conversation.is_no("say no"))
 
-    # ── truncate_for_slack edge cases ────────────────────────────────
 
     def test_truncate_for_slack_leaves_shorter_text_unchanged(self) -> None:
         text = "Short message"
@@ -68,35 +64,32 @@ class ConversationEdgeCaseTests(TestCase):
         self.assertTrue(out.endswith("_(Message truncated.)_"))
 
     def test_truncate_for_slack_with_zero_explicit_cap(self) -> None:
-        """When max_chars is explicitly set to a very small value."""
         text = "Hello world"
         out = conversation.truncate_for_slack(text, max_chars=40)
         self.assertLessEqual(len(out), 40)
 
-    # ── handle_user_query_flow: missing keys in pending ──────────────
 
     def test_yes_reply_uses_query_for_search_when_original_user_message_is_missing(self) -> None:
         conversation.pending_confirmations["C1:U1"] = {
             "query_for_search": "project status",
             "clarified_for_user": "Project status",
-            # "original_user_message" intentionally omitted
+            # omit original_user_message
         }
 
         with patch.object(conversation, "rag_answer_with_retrieval", return_value="answer") as rag:
             answer = conversation.handle_user_query_flow("U1", "C1", "yes")
 
         self.assertEqual(answer, "answer")
-        # Falls back to query_for_search for original_user_message
         rag.assert_called_once()
         call_args = rag.call_args
-        self.assertEqual(call_args[0][0], "project status")  # query_for_search
-        self.assertEqual(call_args[0][1], "project status")  # original_user_message fallback
+        self.assertEqual(call_args[0][0], "project status")
+        self.assertEqual(call_args[0][1], "project status")
 
     def test_yes_reply_uses_query_for_search_when_clarified_for_user_is_missing(self) -> None:
         conversation.pending_confirmations["C1:U1"] = {
             "query_for_search": "project status",
             "original_user_message": "What is the project status?",
-            # "clarified_for_user" intentionally omitted
+            # omit clarified_for_user
         }
 
         with patch.object(conversation, "rag_answer_with_retrieval", return_value="answer") as rag:
@@ -104,9 +97,8 @@ class ConversationEdgeCaseTests(TestCase):
 
         self.assertEqual(answer, "answer")
         call_args = rag.call_args
-        self.assertEqual(call_args[0][2], "project status")  # clarified_for_user fallback
+        self.assertEqual(call_args[0][2], "project status")
 
-    # ── handle_user_query_flow: yes/no variants from is_yes/is_no ────
 
     def test_yes_variant_yep_triggers_confirmation_flow(self) -> None:
         conversation.pending_confirmations["C1:U1"] = {
@@ -132,7 +124,6 @@ class ConversationEdgeCaseTests(TestCase):
         self.assertNotIn("C1:U1", conversation.pending_confirmations)
         self.assertIn("Please ask your question again", answer)
 
-    # ── handle_user_query_flow: new question with empty text ─────────
 
     def test_new_question_with_empty_text_still_calls_clarify(self) -> None:
         clarification = {
@@ -150,7 +141,6 @@ class ConversationEdgeCaseTests(TestCase):
         clarify.assert_called_once_with("")
         self.assertIn("Reply `yes` to continue", answer)
 
-    # ── get_conversation_key with various inputs ─────────────────────
 
     def test_get_conversation_key_with_dm_channel_prefix(self) -> None:
         self.assertEqual(

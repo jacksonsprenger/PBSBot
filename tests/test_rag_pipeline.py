@@ -26,7 +26,7 @@ class RagPipelineTests(TestCase):
         self.original_store = state.chroma_store
         state.settings = SimpleNamespace(
             chroma_filter_projects_only=True,
-            chroma_projects_table_id="tblProjects",
+            route_table_ids={"projects": "tblProjects", "tasks": "", "staff": "", "contacts": ""},
             chroma_n_results=5,
         )
 
@@ -48,7 +48,7 @@ class RagPipelineTests(TestCase):
     def test_project_route_with_empty_table_id_uses_unfiltered_retrieval(self) -> None:
         state.settings = SimpleNamespace(
             chroma_filter_projects_only=True,
-            chroma_projects_table_id="",
+            route_table_ids={"projects": "", "tasks": "", "staff": "", "contacts": ""},
             chroma_n_results=5,
         )
         store = FakeStore([["project chunk"]])
@@ -62,7 +62,7 @@ class RagPipelineTests(TestCase):
     def test_project_route_can_disable_projects_filter(self) -> None:
         state.settings = SimpleNamespace(
             chroma_filter_projects_only=False,
-            chroma_projects_table_id="tblProjects",
+            route_table_ids={"projects": "tblProjects", "tasks": "", "staff": "", "contacts": ""},
             chroma_n_results=5,
         )
         store = FakeStore([["chunk"]])
