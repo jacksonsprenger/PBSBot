@@ -1,6 +1,6 @@
 # PBSBot
 
-A Slack chatbot for PBS Wisconsin that connects to their Airtable project base. The bot answers questions about projects, tasks, and video promotions using natural language queries over Airtable data.
+A Slack chatbot for PBS Wisconsin that connects to their Airtable project base. The bot answers questions about projects, tasks, staff, contacts, and video promotions using natural language queries over Airtable data.
 
 ## Layout (by feature)
 
@@ -33,12 +33,29 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Edit **`.env`**: `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, `AIRTABLE_*`, and Ollama vars if needed. Slack setup: **SETUP.md**. Airtable token: [airtable.com/create/tokens](https://airtable.com/create/tokens) (`data.records:read`, `schema.bases:read`).
+Edit **`.env`**: `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, `AIRTABLE_API_KEY`, `AIRTABLE_BASE_ID`, the route-specific Airtable table IDs, and Ollama vars if needed.
+
+Required Airtable table IDs:
+
+```env
+AIRTABLE_PROJECTS_TABLE_ID=tbl...
+AIRTABLE_TASKS_TABLE_ID=tbl...
+AIRTABLE_STAFF_TABLE_ID=tbl...
+AIRTABLE_CONTACTS_TABLE_ID=tbl...
+```
+
+Slack setup: **SETUP.md**. Airtable token: [airtable.com/create/tokens](https://airtable.com/create/tokens) (`data.records:read`, `schema.bases:read`).
 
 **Index Airtable → Chroma** (needed before RAG returns real data):
 
 ```bash
-python -m pbsbot.ingestion.sync_airtable
+python -m pbsbot.ingestion.sync_airtable --reset --all-tables
+```
+
+For later updates without clearing the collection:
+
+```bash
+python -m pbsbot.ingestion.sync_airtable --all-tables
 ```
 
 **Start Ollama** on your machine if you use the default local LLM URL.
@@ -66,7 +83,7 @@ cd PBSBot
 cp .env.example .env
 # Edit .env (Slack, Airtable, Ollama as needed)
 docker compose up -d --build
-docker compose run --rm pbsbot python -m pbsbot.ingestion.sync_airtable
+docker compose run --rm pbsbot python -m pbsbot.ingestion.sync_airtable --reset --all-tables
 docker compose logs -f pbsbot
 ```
 
@@ -88,7 +105,7 @@ docker login
 cd /path/to/pbsbot
 docker compose -f docker-compose.hub.yml pull
 docker compose -f docker-compose.hub.yml up -d
-docker compose -f docker-compose.hub.yml run --rm pbsbot python -m pbsbot.ingestion.sync_airtable
+docker compose -f docker-compose.hub.yml run --rm pbsbot python -m pbsbot.ingestion.sync_airtable --reset --all-tables
 docker compose -f docker-compose.hub.yml logs -f pbsbot
 ```
 
@@ -107,11 +124,13 @@ The **`tools/llm_connect.py`** script connects to a remote LLM over SSH tunnel f
 ### Configure and run
 
 Open `tools/llm_connect.py` and update the config block:
-```
+
+```bash
 ssh capstone@144.92.195.30
 ```
 
 Then run:
+
 ```bash
 python tools/llm_connect.py
 ```
@@ -132,12 +151,10 @@ python tools/llm_connect.py
 
 ## Next Steps
 
-With more time, our next step for this project would be expanding the UI and RAG-Pipeline to provide better responses for user questions.
+With more time, our next step for this project would be improving the RAG pipeline and response quality for the four supported question categories: project information, staff and roles, tasks and deadlines, and contacts and partners.
 
-Currently, the UI prompts the user to select between 4 question categories: Project information, Staff & roles, Tasks & deadlines, Contacts & partners
+The current system uses route-based retrieval to select the relevant Airtable table before querying ChromaDB. This improves over a single-table retrieval flow, but there is still room to improve how nested Airtable data is represented. Some linked records can still appear as record IDs instead of fully readable names or details, especially when information is stored across related tables. A future version could expand the ingestion step to resolve linked records before indexing them.
 
-Once selected, every category except Project information, suggests the user ask the question in the Project information category. Part of this is due to complexities we encountered with nested data in Airtable, where the Staff, Contacts, and Tasks listed in a Project are currently returned as an identification code and not legible information. With our current caching scheme using ChromaDB, we weren't able to devise a more effective method to extract the nested data, which would be a good place for a future group to start with this project.
+Another area for future work is stronger guardrails to ensure that data returned by the LLM is accurate to what is in Airtable. From our testing, most information appeared to be accurate or produced the expected fail statement, but different phrasings of questions could still produce different results. This would likely require improving the retrieval logic, prompt structure, and ChromaDB indexing strategy so user intent is consistently interpreted into the correct route and table lookup.
 
-Additionally, another area where more work needs to be done is putting stronger guardrails in place to ensure that data returned by the LLM is accurate to what is in Airtable. From our testing, most information appeared to be accurate or produce the fail statement we expected, but different phrasings of questions could produce different results. This would likely require tweaking the RAG-pipeline and caching schemes for ChromaDB to ensure that user intent is consistently interpreted into the correct API call to Airtable.
-
-A recommendation for future versions of this project would be to test the system with more Airtable data. One issue we ran into during our testing was that in the data we were given, entries had been removed or edited to protect privacy. This only became an issue when we were testing for data pulls for information that would typically be found in the Airtable database, but wasn't included in our version, such as asking who the director or producer was for certain projects. As a result, by having more incomplete data, we were limited in our ability to test the edge-cases of our implementation. 
+A recommendation for future versions of this project would be to test the system with more Airtable data. One issue we ran into during our testing was that some entries had been removed or edited to protect privacy. This limited our ability to test edge cases, such as asking who the director or producer was for certain projects when that information was not included in our version of the database.
