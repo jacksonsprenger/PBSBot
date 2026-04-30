@@ -69,7 +69,6 @@ def handle_user_query_flow(
                 route,
                 query_for_search[:200],
             )
-
             answer = rag_answer_with_retrieval(
                 query_for_search,
                 original_user_message,
