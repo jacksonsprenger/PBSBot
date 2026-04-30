@@ -1,4 +1,4 @@
-# RAG pipeline: auto-routing, case insensitivity, filter combos, retry logic
+# RAG pipeline: auto-routing, case insensitivity, filter combos
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -56,8 +56,7 @@ class RetrievalFilterExtendedTests(TestCase):
     def setUp(self) -> None:
         self.original_settings = state.settings
         state.settings = SimpleNamespace(
-            chroma_filter_projects_only=True,
-            route_table_ids={"projects": "tblProjects", "tasks": "", "staff": "", "contacts": ""},
+            route_table_ids={"projects": "tblProjects", "tasks": "tblTasks", "staff": "tblStaff", "contacts": "tblContacts"},
             chroma_n_results=5,
         )
 
@@ -67,23 +66,14 @@ class RetrievalFilterExtendedTests(TestCase):
     def test_retrieval_filter_for_unknown_route_returns_none(self) -> None:
         self.assertIsNone(pipeline.retrieval_filter_for_route("unknown"))
 
-    def test_retrieval_filter_for_projects_disabled_and_empty_id(self) -> None:
+    def test_retrieval_filter_for_empty_table_id(self) -> None:
         state.settings = SimpleNamespace(
-            chroma_filter_projects_only=False,
             route_table_ids={"projects": "", "tasks": "", "staff": "", "contacts": ""},
             chroma_n_results=5,
         )
 
         self.assertIsNone(pipeline.retrieval_filter_for_route("projects"))
-
-    def test_retrieval_filter_for_projects_enabled_but_empty_id(self) -> None:
-        state.settings = SimpleNamespace(
-            chroma_filter_projects_only=True,
-            route_table_ids={"projects": "", "tasks": "", "staff": "", "contacts": ""},
-            chroma_n_results=5,
-        )
-
-        self.assertIsNone(pipeline.retrieval_filter_for_route("projects"))
+        self.assertIsNone(pipeline.retrieval_filter_for_route("tasks"))
 
 
 class RagAnswerAutoRoutingTests(TestCase):
@@ -91,8 +81,7 @@ class RagAnswerAutoRoutingTests(TestCase):
         self.original_settings = state.settings
         self.original_store = state.chroma_store
         state.settings = SimpleNamespace(
-            chroma_filter_projects_only=True,
-            route_table_ids={"projects": "tblProjects", "tasks": "", "staff": "", "contacts": ""},
+            route_table_ids={"projects": "tblProjects", "tasks": "tblTasks", "staff": "tblStaff", "contacts": "tblContacts"},
             chroma_n_results=5,
         )
 
@@ -109,7 +98,7 @@ class RagAnswerAutoRoutingTests(TestCase):
                 "What tasks are due?", "tasks due?", "Tasks due", route=None
             )
 
-        self.assertEqual(store.calls[0]["where"], {"table_name": "Tasks"})
+        self.assertEqual(store.calls[0]["where"], {"table_id": "tblTasks"})
 
     def test_auto_routes_contact_query_when_route_is_none(self) -> None:
         store = FakeStore([["contact chunk"]])
@@ -120,7 +109,7 @@ class RagAnswerAutoRoutingTests(TestCase):
                 "What is the email for Jane?", "email Jane?", "Email Jane", route=None
             )
 
-        self.assertEqual(store.calls[0]["where"], {"table_name": "Contacts"})
+        self.assertEqual(store.calls[0]["where"], {"table_id": "tblContacts"})
 
     def test_auto_routes_project_query_when_route_is_none(self) -> None:
         store = FakeStore([["project chunk"]])
@@ -133,8 +122,12 @@ class RagAnswerAutoRoutingTests(TestCase):
 
         self.assertEqual(store.calls[0]["where"], {"table_id": "tblProjects"})
 
-    def test_staff_route_with_empty_results_retries_without_filter(self) -> None:
-        store = FakeStore([[], ["fallback chunk"]])
+    def test_staff_route_with_empty_table_id_uses_no_filter(self) -> None:
+        state.settings = SimpleNamespace(
+            route_table_ids={"projects": "", "tasks": "", "staff": "", "contacts": ""},
+            chroma_n_results=5,
+        )
+        store = FakeStore([["staff chunk"]])
         state.chroma_store = store
 
         with patch.object(pipeline, "synthesize_answer_with_llm", return_value="answer"):
@@ -142,10 +135,9 @@ class RagAnswerAutoRoutingTests(TestCase):
                 "who is the producer?", "Who is the producer?", "Producer info", route="staff"
             )
 
-        self.assertEqual(store.calls[0]["where"], {"table_name": "Staff"})
-        self.assertIsNone(store.calls[1]["where"])
+        self.assertIsNone(store.calls[0]["where"])
 
-    def test_contacts_route_with_results_does_not_retry(self) -> None:
+    def test_contacts_route_with_results_only_queries_once(self) -> None:
         store = FakeStore([["contact info"]])
         state.chroma_store = store
 

@@ -49,6 +49,7 @@ def format_value(v):
         if len(v) > 4:
             s += f" (+{len(v) - 4} more)"
         return s[:MAX_FIELD_VALUE_LEN] + ("..." if len(s) > MAX_FIELD_VALUE_LEN else "")
+    # plain string — strip HTML tags and collapse whitespace
     s = str(v).strip()
     s = re.sub(r"<[^>]+>", "", s)
     s = re.sub(r"\s+", " ", s)

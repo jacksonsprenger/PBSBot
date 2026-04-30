@@ -19,6 +19,7 @@ log = logging.getLogger("pbs_bot")
 
 
 def run() -> None:
+    # boot order matters: .env -> settings -> SSL/logging -> chroma -> state -> slack
     load_dotenv()
     settings = load_settings()
     configure_runtime(settings.log_level)
@@ -35,6 +36,7 @@ def run() -> None:
     app = App(token=settings.slack_bot_token)
     register(app)
 
+    # socket mode = outbound websocket, no need to open inbound ports
     handler = SocketModeHandler(app, settings.slack_app_token)
     log.info("PBS Bot Socket Mode handler starting (set LOG_LEVEL=DEBUG for verbose logs)")
     print("🤖 PBS Bot is running!")

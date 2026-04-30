@@ -37,6 +37,7 @@ def register(app: App) -> None:
 
     @app.event("message")
     def handle_message(message, say):
+        # ignore bot messages and system events (edits, joins, etc.)
         if message.get("bot_id") or message.get("subtype"):
             return
 
@@ -53,12 +54,14 @@ def register(app: App) -> None:
             text[:80],
         )
 
+        # DMs always go through the full flow
         if channel_type == "im":
             log.info("message in DM: full flow")
             answer = handle_user_query_flow(user, channel, text)
             say(f"<@{user}>\n{answer}")
             return
 
+        # in channels, only respond to yes/no if we're waiting for a confirmation
         if channel_type in ("channel", "group", "mpim", ""):
             conversation_key = get_conversation_key(channel, user)
             if conversation_key not in pending_confirmations:

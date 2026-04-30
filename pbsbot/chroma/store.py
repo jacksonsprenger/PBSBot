@@ -67,11 +67,13 @@ class ChromaStore:
         )
         qkwargs: dict = {
             "query_texts": [query],
-            "n_results": max(1, k),
+            "n_results": max(1, k),  # chroma needs at least 1
         }
         if where:
             qkwargs["where"] = where
 
+        # retry once on stale index — happens when sync_airtable updates
+        # the DB on disk while the bot is running
         for attempt in range(2):
             try:
                 results = self._collection.query(**qkwargs)
