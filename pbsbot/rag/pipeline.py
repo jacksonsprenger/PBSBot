@@ -10,12 +10,6 @@ from pbsbot.llm.ollama import synthesize_answer_with_llm
 
 log = logging.getLogger("pbs_bot")
 
-ROUTE_TABLE_NAMES = {
-    "tasks": "Tasks",
-    "contacts": "Contacts",
-    "staff": "Staff",
-}
-
 
 def route_query(query: str) -> str:
     q = query.lower()
@@ -36,22 +30,22 @@ def retrieval_filter_for_route(route: str) -> dict | None:
     s = state.settings
     assert s is not None
 
-    if route == "projects":
-        projects_id = s.route_table_ids.get("projects", "")
-        if s.chroma_filter_projects_only and projects_id:
-            log.info(
-                "retrieve_chunks: scoping to Projects table_id=%s",
-                projects_id,
-            )
-            return {"table_id": projects_id}
+    selected_route = (route or "projects").strip().lower()
+    table_id = s.route_table_ids.get(selected_route, "").strip()
+
+    if not table_id:
+        log.warning(
+            "retrieve_chunks: no table_id configured for route=%s; searching all tables",
+            selected_route,
+        )
         return None
 
-    table_name = ROUTE_TABLE_NAMES.get(route)
-    if table_name:
-        log.info("retrieve_chunks: scoping to %s table_name=%s", route, table_name)
-        return {"table_name": table_name}
-
-    return None
+    log.info(
+        "retrieve_chunks: scoping route=%s table_id=%s",
+        selected_route,
+        table_id,
+    )
+    return {"table_id": table_id}
 
 
 def rag_answer_with_retrieval(
@@ -69,17 +63,15 @@ def rag_answer_with_retrieval(
 
     t0 = time.perf_counter()
     chunks = store.retrieve_chunks(query_for_search, where=where)
-    if not chunks and where and selected_route != "projects":
-        log.info(
-            "retrieve_chunks: no chunks for route=%s where=%s; retrying without filter",
-            selected_route,
-            where,
-        )
-        chunks = store.retrieve_chunks(query_for_search)
+
     out = synthesize_answer_with_llm(
         original_user_message,
         clarified_for_user,
         chunks,
     )
-    log.info("rag_answer_with_retrieval: total %.2fs", time.perf_counter() - t0)
+    log.info(
+        "rag_answer_with_retrieval: route=%s total %.2fs",
+        selected_route,
+        time.perf_counter() - t0,
+    )
     return out
