@@ -25,8 +25,7 @@ class RagPipelineTests(TestCase):
         self.original_settings = state.settings
         self.original_store = state.chroma_store
         state.settings = SimpleNamespace(
-            chroma_filter_projects_only=True,
-            route_table_ids={"projects": "tblProjects", "tasks": "", "staff": "", "contacts": ""},
+            route_table_ids={"projects": "tblProjects", "tasks": "tblTasks", "staff": "tblStaff", "contacts": "tblContacts"},
             chroma_n_results=5,
         )
 
@@ -47,7 +46,6 @@ class RagPipelineTests(TestCase):
 
     def test_project_route_with_empty_table_id_uses_unfiltered_retrieval(self) -> None:
         state.settings = SimpleNamespace(
-            chroma_filter_projects_only=True,
             route_table_ids={"projects": "", "tasks": "", "staff": "", "contacts": ""},
             chroma_n_results=5,
         )
@@ -59,43 +57,21 @@ class RagPipelineTests(TestCase):
 
         self.assertIsNone(store.calls[0]["where"])
 
-    def test_project_route_can_disable_projects_filter(self) -> None:
-        state.settings = SimpleNamespace(
-            chroma_filter_projects_only=False,
-            route_table_ids={"projects": "tblProjects", "tasks": "", "staff": "", "contacts": ""},
-            chroma_n_results=5,
-        )
-        store = FakeStore([["chunk"]])
+    def test_tasks_route_uses_table_id_filter(self) -> None:
+        store = FakeStore([["task chunk"]])
         state.chroma_store = store
 
         with patch.object(pipeline, "synthesize_answer_with_llm", return_value="answer"):
-            pipeline.rag_answer_with_retrieval("project status", "Project status?", "Project status")
-
-        self.assertIsNone(store.calls[0]["where"])
-
-    def test_non_project_route_retries_without_filter_when_filtered_search_is_empty(self) -> None:
-        store = FakeStore([[], ["fallback chunk"]])
-        state.chroma_store = store
-
-        with patch.object(pipeline, "synthesize_answer_with_llm", return_value="answer") as synth:
-            out = pipeline.rag_answer_with_retrieval(
+            pipeline.rag_answer_with_retrieval(
                 "tasks due this week",
                 "What tasks are due?",
                 "Tasks due this week",
                 route="tasks",
             )
 
-        self.assertEqual(out, "answer")
-        self.assertEqual(
-            store.calls,
-            [
-                {"query": "tasks due this week", "n_results": None, "where": {"table_name": "Tasks"}},
-                {"query": "tasks due this week", "n_results": None, "where": None},
-            ],
-        )
-        synth.assert_called_once_with("What tasks are due?", "Tasks due this week", ["fallback chunk"])
+        self.assertEqual(store.calls[0]["where"], {"table_id": "tblTasks"})
 
-    def test_non_project_route_does_not_retry_when_filtered_search_has_results(self) -> None:
+    def test_contacts_route_uses_table_id_filter(self) -> None:
         store = FakeStore([["contact chunk"]])
         state.chroma_store = store
 
@@ -109,8 +85,21 @@ class RagPipelineTests(TestCase):
 
         self.assertEqual(
             store.calls,
-            [{"query": "phone number", "n_results": None, "where": {"table_name": "Contacts"}}],
+            [{"query": "phone number", "n_results": None, "where": {"table_id": "tblContacts"}}],
         )
+
+    def test_empty_table_id_route_uses_unfiltered_retrieval(self) -> None:
+        state.settings = SimpleNamespace(
+            route_table_ids={"projects": "", "tasks": "", "staff": "", "contacts": ""},
+            chroma_n_results=5,
+        )
+        store = FakeStore([["chunk"]])
+        state.chroma_store = store
+
+        with patch.object(pipeline, "synthesize_answer_with_llm", return_value="answer"):
+            pipeline.rag_answer_with_retrieval("tasks", "Tasks?", "tasks", route="tasks")
+
+        self.assertIsNone(store.calls[0]["where"])
 
     def test_project_route_does_not_retry_when_filtered_search_is_empty(self) -> None:
         store = FakeStore([[]])

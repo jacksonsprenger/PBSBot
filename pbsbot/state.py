@@ -1,4 +1,5 @@
-"""Wired in pbsbot.slack.app before handlers run."""
+# global state — set once at startup, read by handlers/pipeline/llm
+# avoids passing settings and chroma_store through every function call
 
 from __future__ import annotations
 

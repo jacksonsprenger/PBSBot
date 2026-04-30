@@ -42,6 +42,8 @@ def generate(prompt: str) -> Optional[str]:
 
 
 def _extract_json_object(text: str) -> Optional[dict]:
+    # the model sometimes wraps JSON in extra text or markdown fences,
+    # so we try json.loads first, then fall back to regex extraction
     raw = (text or "").strip()
     if not raw:
         return None
@@ -142,6 +144,7 @@ def synthesize_answer_with_llm(
         )
         return text
 
+    # if Ollama is down, just dump the raw chunks so the user still gets something
     joined = "\n\n---\n\n".join(
         f"[Source {i + 1}]\n{chunk}" for i, chunk in enumerate(context_chunks)
     )

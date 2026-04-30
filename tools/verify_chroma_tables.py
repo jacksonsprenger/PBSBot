@@ -34,6 +34,7 @@ def main() -> int:
     ctr: Counter[str] = Counter()
     names: dict[str, str] = {}
 
+    # page through all chunks and count how many belong to each table
     while offset < n:
         res = col.get(include=["metadatas"], limit=min(batch, n - offset), offset=offset)
         metas = res.get("metadatas") or []

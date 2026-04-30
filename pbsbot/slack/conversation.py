@@ -10,6 +10,7 @@ from pbsbot.rag.pipeline import rag_answer_with_retrieval, route_query
 
 log = logging.getLogger("pbs_bot")
 
+# keyed by "channel:user" — holds the clarified query while we wait for yes/no
 pending_confirmations: dict[str, dict] = {}
 
 
@@ -23,6 +24,7 @@ def truncate_for_slack(text: str, max_chars: int | None = None) -> str:
 
 
 def normalize_mention_text(text: str) -> str:
+    # strip out Slack mention tokens like <@U1234> so we just get the actual question
     cleaned = text.strip()
     parts = [p for p in cleaned.split() if not (p.startswith("<@") and p.endswith(">"))]
     return " ".join(parts).strip()
@@ -56,6 +58,7 @@ def handle_user_query_flow(
         (text or "")[:120],
     )
 
+    # if we're waiting for a yes/no, handle that first
     if pending:
         if is_yes(text):
             query_for_search = pending["query_for_search"]
@@ -85,6 +88,7 @@ def handle_user_query_flow(
         log.debug("pending but not yes/no: prompting again")
         return "Please reply with one of: `yes` or `no`."
 
+    # new question — ask the LLM to rephrase it, then wait for user to confirm
     log.info("new question: calling clarify_query_with_llm")
     clarification = clarify_query_with_llm(text)
     route = selected_route or route_query(text)

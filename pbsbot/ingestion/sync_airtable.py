@@ -56,6 +56,7 @@ DEFAULT_TABLE_ID = "tblU9LfZeVNicdB5e"
 DEFAULT_CHROMA_PATH = "./chroma_db"
 DEFAULT_COLLECTION = "pbs_projects"
 UPSERT_BATCH = 50
+# chunk settings — overlap helps keep context across chunk boundaries
 DEFAULT_CHUNK_SIZE_CHARS = 1200
 DEFAULT_CHUNK_OVERLAP_CHARS = 200
 

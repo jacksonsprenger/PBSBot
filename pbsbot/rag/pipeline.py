@@ -12,6 +12,7 @@ log = logging.getLogger("pbs_bot")
 
 
 def route_query(query: str) -> str:
+    # figure out which Airtable table to search based on keywords in the question
     q = query.lower()
 
     if any(word in q for word in ("task", "deadline", "due", "milestone")):
@@ -27,6 +28,8 @@ def route_query(query: str) -> str:
 
 
 def retrieval_filter_for_route(route: str) -> dict | None:
+    # build a chroma "where" filter using the table_id from config
+    # returns None if no table_id is set (searches everything)
     s = state.settings
     assert s is not None
 

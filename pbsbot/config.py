@@ -7,6 +7,8 @@ from dataclasses import dataclass
 
 
 def _resolve_ollama_base_url() -> str:
+    # if env var is set, use it; otherwise pick a default based on
+    # whether we're inside a Docker container or running locally
     raw = (os.getenv("OLLAMA_BASE_URL") or "").strip()
     if raw:
         return raw.rstrip("/")
@@ -51,6 +53,7 @@ def load_settings() -> Settings:
         chroma_n_results=int(os.getenv("CHROMA_N_RESULTS", "5")),
         chroma_persist_dir=os.getenv("CHROMA_PERSIST_DIR", "./chroma_db"),
         chroma_filter_projects_only=filt,
+        # maps each route to its Airtable table ID for filtered retrieval
         route_table_ids={
             "projects": projects_table_id,
             "tasks": tasks_table_id,

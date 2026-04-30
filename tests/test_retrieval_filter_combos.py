@@ -1,4 +1,4 @@
-# retrieval_filter_for_route() with different route_table_ids / filter flag combos
+# retrieval_filter_for_route() with different route_table_ids combos
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -16,10 +16,8 @@ class RetrievalFilterComboTests(TestCase):
     def tearDown(self) -> None:
         state.settings = self.original_settings
 
-
-    def test_projects_filter_enabled_with_id(self) -> None:
+    def test_projects_with_table_id_returns_filter(self) -> None:
         state.settings = SimpleNamespace(
-            chroma_filter_projects_only=True,
             route_table_ids={"projects": "tblProj"},
         )
 
@@ -27,9 +25,8 @@ class RetrievalFilterComboTests(TestCase):
 
         self.assertEqual(result, {"table_id": "tblProj"})
 
-    def test_projects_filter_enabled_without_id(self) -> None:
+    def test_projects_without_table_id_returns_none(self) -> None:
         state.settings = SimpleNamespace(
-            chroma_filter_projects_only=True,
             route_table_ids={"projects": ""},
         )
 
@@ -37,64 +34,48 @@ class RetrievalFilterComboTests(TestCase):
 
         self.assertIsNone(result)
 
-    def test_projects_filter_disabled_with_id(self) -> None:
-        state.settings = SimpleNamespace(
-            chroma_filter_projects_only=False,
-            route_table_ids={"projects": "tblProj"},
-        )
-
-        result = retrieval_filter_for_route("projects")
-
-        self.assertIsNone(result)
-
-    def test_projects_filter_disabled_without_id(self) -> None:
-        state.settings = SimpleNamespace(
-            chroma_filter_projects_only=False,
-            route_table_ids={"projects": ""},
-        )
-
-        result = retrieval_filter_for_route("projects")
-
-        self.assertIsNone(result)
-
-    def test_projects_missing_from_route_table_ids(self) -> None:
-        state.settings = SimpleNamespace(
-            chroma_filter_projects_only=True,
-            route_table_ids={},
-        )
-
-        result = retrieval_filter_for_route("projects")
-
-        self.assertIsNone(result)
-
-
-    def test_tasks_always_uses_table_name(self) -> None:
+    def test_tasks_with_table_id_returns_filter(self) -> None:
         state.settings = SimpleNamespace(
             route_table_ids={"tasks": "tblTasks"},
         )
 
         result = retrieval_filter_for_route("tasks")
 
-        self.assertEqual(result, {"table_name": "Tasks"})
+        self.assertEqual(result, {"table_id": "tblTasks"})
 
-    def test_contacts_always_uses_table_name(self) -> None:
+    def test_contacts_with_table_id_returns_filter(self) -> None:
         state.settings = SimpleNamespace(
             route_table_ids={"contacts": "tblContacts"},
         )
 
         result = retrieval_filter_for_route("contacts")
 
-        self.assertEqual(result, {"table_name": "Contacts"})
+        self.assertEqual(result, {"table_id": "tblContacts"})
 
-    def test_staff_always_uses_table_name(self) -> None:
+    def test_staff_with_table_id_returns_filter(self) -> None:
         state.settings = SimpleNamespace(
             route_table_ids={"staff": "tblStaff"},
         )
 
         result = retrieval_filter_for_route("staff")
 
-        self.assertEqual(result, {"table_name": "Staff"})
+        self.assertEqual(result, {"table_id": "tblStaff"})
 
+    def test_empty_table_id_returns_none(self) -> None:
+        state.settings = SimpleNamespace(
+            route_table_ids={"tasks": "", "staff": ""},
+        )
+
+        self.assertIsNone(retrieval_filter_for_route("tasks"))
+        self.assertIsNone(retrieval_filter_for_route("staff"))
+
+    def test_missing_route_key_returns_none(self) -> None:
+        state.settings = SimpleNamespace(
+            route_table_ids={},
+        )
+
+        self.assertIsNone(retrieval_filter_for_route("projects"))
+        self.assertIsNone(retrieval_filter_for_route("tasks"))
 
     def test_unknown_route_returns_none(self) -> None:
         state.settings = SimpleNamespace(
@@ -102,5 +83,4 @@ class RetrievalFilterComboTests(TestCase):
         )
 
         self.assertIsNone(retrieval_filter_for_route("unknown"))
-        self.assertIsNone(retrieval_filter_for_route(""))
         self.assertIsNone(retrieval_filter_for_route("something_else"))

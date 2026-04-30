@@ -14,8 +14,7 @@ class RagRouteTests(TestCase):
         self.original_settings = state.settings
         self.original_store = state.chroma_store
         state.settings = SimpleNamespace(
-            chroma_filter_projects_only=True,
-            route_table_ids={"projects": "tblProjects", "tasks": "", "staff": "", "contacts": ""},
+            route_table_ids={"projects": "tblProjects", "tasks": "tblTasks", "staff": "tblStaff", "contacts": "tblContacts"},
             max_slack_chars=3500,
         )
         conversation.pending_confirmations.clear()
@@ -33,9 +32,9 @@ class RagRouteTests(TestCase):
 
     def test_retrieval_filter_for_route_uses_metadata(self) -> None:
         self.assertEqual(retrieval_filter_for_route("projects"), {"table_id": "tblProjects"})
-        self.assertEqual(retrieval_filter_for_route("tasks"), {"table_name": "Tasks"})
-        self.assertEqual(retrieval_filter_for_route("contacts"), {"table_name": "Contacts"})
-        self.assertEqual(retrieval_filter_for_route("staff"), {"table_name": "Staff"})
+        self.assertEqual(retrieval_filter_for_route("tasks"), {"table_id": "tblTasks"})
+        self.assertEqual(retrieval_filter_for_route("contacts"), {"table_id": "tblContacts"})
+        self.assertEqual(retrieval_filter_for_route("staff"), {"table_id": "tblStaff"})
 
     def test_confirmed_task_question_calls_rag(self) -> None:
         conversation.pending_confirmations["C1:U1"] = {

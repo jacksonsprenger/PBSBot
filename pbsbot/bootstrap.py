@@ -17,6 +17,7 @@ def configure_runtime(log_level: str | None = None) -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
         force=True,
     )
+    # fix SSL cert issues on macOS — without this, Chroma and Airtable HTTPS calls fail
     os.environ["SSL_CERT_FILE"] = certifi.where()
     os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
     ssl._create_default_https_context = ssl.create_default_context
